@@ -3,11 +3,11 @@ server:
   port: 8888
 
 mysql:
-  host: db.cle.fun
+  host: db.cfsingle.fun
   port: 3306
-  username: dbdata
-  password: dbdata@12we34
-  db: db_data
+  username: zanso
+  password: 4HjZRnQH0O
+  db: db_zanso
 
 redis:
   host: redis.cfsingle.fun
