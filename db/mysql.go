@@ -1,12 +1,13 @@
 package db
 
 import (
-	"github.com/spf13/viper"
 	"log"
 	"os"
 	"time"
 	"zanso/model"
 	"zanso/util"
+
+	"github.com/spf13/viper"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -51,7 +52,7 @@ func Database() {
 	sqlDB.SetMaxOpenConns(20)
 	DB = db
 
-	migration()
+	//migration()
 }
 
 func migration() {
