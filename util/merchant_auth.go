@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	ContextMerchantKey = "currentMerchant"
+	ContextUserKey = "currentUser"
 )
 
 func ParseBearerToken(authHeader string) string {
@@ -22,7 +22,7 @@ func ParseBearerToken(authHeader string) string {
 	return authHeader
 }
 
-func ExtractMerchantToken(c *gin.Context) string {
+func ExtractUserToken(c *gin.Context) string {
 	token := strings.TrimSpace(c.GetHeader("Authorization"))
 	if token != "" {
 		return ParseBearerToken(token)
@@ -30,19 +30,19 @@ func ExtractMerchantToken(c *gin.Context) string {
 	return strings.TrimSpace(c.GetHeader("satoken"))
 }
 
-func CurrentMerchantID(c *gin.Context) string {
-	merchant, ok := GetCurrentMerchant(c)
+func CurrentUserID(c *gin.Context) string {
+	user, ok := GetCurrentUser(c)
 	if !ok {
 		return ""
 	}
-	return merchant.ID
+	return user.ID
 }
 
-func GetCurrentMerchant(c *gin.Context) (model.Merchant, bool) {
-	value, exists := c.Get(ContextMerchantKey)
+func GetCurrentUser(c *gin.Context) (model.User, bool) {
+	value, exists := c.Get(ContextUserKey)
 	if !exists {
-		return model.Merchant{}, false
+		return model.User{}, false
 	}
-	merchant, ok := value.(model.Merchant)
-	return merchant, ok
+	user, ok := value.(model.User)
+	return user, ok
 }

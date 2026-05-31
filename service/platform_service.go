@@ -16,14 +16,14 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateMerchant(c *gin.Context) {
-	var req model.CreateMerchantRequest
+func CreateUser(c *gin.Context) {
+	var req model.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		result.ErrSetMsg(c, "商家参数错误")
+		result.ErrSetMsg(c, "用户参数错误")
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		result.ErrSetMsg(c, "商家名称不能为空")
+		result.ErrSetMsg(c, "用户名称不能为空")
 		return
 	}
 	if strings.TrimSpace(req.LoginName) == "" || strings.TrimSpace(req.Password) == "" {
@@ -37,155 +37,155 @@ func CreateMerchant(c *gin.Context) {
 		return
 	}
 
-	merchant := model.Merchant{
+	user := model.User{
 		ID:           util.GetUuid(),
 		Name:         strings.TrimSpace(req.Name),
 		LoginName:    strings.TrimSpace(req.LoginName),
 		PasswordHash: passwordHash,
 		ContactName:  strings.TrimSpace(req.ContactName),
 		ContactPhone: strings.TrimSpace(req.ContactPhone),
-		Status:       model.MerchantStatusActive,
+		Status:       model.UserStatusActive,
 		CreatedAt:    util.GetTime(),
 		UpdatedAt:    util.GetTime(),
 	}
-	if err = db.DB.Create(&merchant).Error; err != nil {
-		result.ErrSetMsg(c, "创建商家失败")
+	if err = db.DB.Create(&user).Error; err != nil {
+		result.ErrSetMsg(c, "创建用户失败")
 		return
 	}
 	var role model.Role
-	err = db.DB.Where("code = ?", model.RoleCodeMerchant).Take(&role).Error
+	err = db.DB.Where("code = ?", model.RoleCodeUser).Take(&role).Error
 	if err == nil {
-		_ = db.DB.Create(&model.MerchantRole{
-			ID:         util.GetUuid(),
-			MerchantID: merchant.ID,
-			RoleID:     role.ID,
-			CreatedAt:  util.GetTime(),
+		_ = db.DB.Create(&model.UserRole{
+			ID:        util.GetUuid(),
+			UserID:    user.ID,
+			RoleID:    role.ID,
+			CreatedAt: util.GetTime(),
 		}).Error
 	}
-	result.OkSetData(c, merchant)
+	result.OkSetData(c, user)
 }
 
-func GetMerchantList(c *gin.Context) {
-	currentMerchant, ok := util.GetCurrentMerchant(c)
+func GetUserList(c *gin.Context) {
+	currentUser, ok := util.GetCurrentUser(c)
 	if !ok {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
 
-	var merchantList []model.Merchant
-	if err := db.DB.Where("id = ?", currentMerchant.ID).Order("created_at desc").Find(&merchantList).Error; err != nil {
-		result.ErrSetMsg(c, "查询商家失败")
+	var userList []model.User
+	if err := db.DB.Where("id = ?", currentUser.ID).Order("created_at desc").Find(&userList).Error; err != nil {
+		result.ErrSetMsg(c, "查询用户失败")
 		return
 	}
-	result.OkSetData(c, merchantList)
+	result.OkSetData(c, userList)
 }
 
-func CreateProduct(c *gin.Context) {
-	var req model.CreateProductRequest
+func CreateCategory(c *gin.Context) {
+	var req model.CreateCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		result.ErrSetMsg(c, "商品参数错误")
+		result.ErrSetMsg(c, "分类参数错误")
 		return
 	}
-	currentMerchant, ok := util.GetCurrentMerchant(c)
+	currentUser, ok := util.GetCurrentUser(c)
 	if !ok {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
-	if strings.TrimSpace(req.Title) == "" {
-		result.ErrSetMsg(c, "商品标题不能为空")
+	if strings.TrimSpace(req.Name) == "" {
+		result.ErrSetMsg(c, "分类名称不能为空")
 		return
 	}
 
 	status := strings.TrimSpace(req.Status)
 	if status == "" {
-		status = model.ProductStatusDraft
+		status = model.CategoryStatusDraft
 	}
 
-	product := model.Product{
+	category := model.Category{
 		ID:          util.GetUuid(),
-		MerchantID:  currentMerchant.ID,
-		Title:       strings.TrimSpace(req.Title),
+		UserID:      currentUser.ID,
+		Name:        strings.TrimSpace(req.Name),
 		Description: strings.TrimSpace(req.Description),
 		CoverURL:    strings.TrimSpace(req.CoverURL),
 		Status:      status,
 		CreatedAt:   util.GetTime(),
 		UpdatedAt:   util.GetTime(),
 	}
-	if err := db.DB.Create(&product).Error; err != nil {
-		result.ErrSetMsg(c, "创建商品失败")
+	if err := db.DB.Create(&category).Error; err != nil {
+		result.ErrSetMsg(c, "创建分类失败")
 		return
 	}
-	result.OkSetData(c, product)
+	result.OkSetData(c, category)
 }
 
-func GetMerchantProductList(c *gin.Context) {
-	merchantID := c.Param("merchantId")
-	currentMerchant, ok := util.GetCurrentMerchant(c)
+func GetUserCategoryList(c *gin.Context) {
+	userID := c.Param("userId")
+	currentUser, ok := util.GetCurrentUser(c)
 	if !ok {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
-	if merchantID == "" || merchantID != currentMerchant.ID {
-		result.ErrSetMsg(c, "无权查看其他商家的商品")
+	if userID == "" || userID != currentUser.ID {
+		result.ErrSetMsg(c, "无权查看其他用户的分类")
 		return
 	}
 
-	var productList []model.Product
-	if err := db.DB.Where("merchant_id = ?", merchantID).Order("created_at desc").Find(&productList).Error; err != nil {
-		result.ErrSetMsg(c, "查询商品失败")
+	var categoryList []model.Category
+	if err := db.DB.Where("user_id = ?", userID).Order("created_at desc").Find(&categoryList).Error; err != nil {
+		result.ErrSetMsg(c, "查询分类失败")
 		return
 	}
-	result.OkSetData(c, productList)
+	result.OkSetData(c, categoryList)
 }
 
-func GetProductDetail(c *gin.Context) {
-	productID := c.Param("id")
-	if productID == "" {
-		result.ErrSetMsg(c, "商品 ID 不能为空")
+func GetCategoryDetail(c *gin.Context) {
+	categoryID := c.Param("id")
+	if categoryID == "" {
+		result.ErrSetMsg(c, "分类 ID 不能为空")
 		return
 	}
-	currentMerchantID := util.CurrentMerchantID(c)
-	if currentMerchantID == "" {
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
 
-	var product model.Product
-	if err := db.DB.Where("id = ? AND merchant_id = ?", productID, currentMerchantID).Take(&product).Error; err != nil {
-		result.ErrSetMsg(c, "商品不存在")
+	var category model.Category
+	if err := db.DB.Where("id = ? AND user_id = ?", categoryID, currentUserID).Take(&category).Error; err != nil {
+		result.ErrSetMsg(c, "分类不存在")
 		return
 	}
 
-	var merchant model.Merchant
-	var mediaList []model.MediaAsset
+	var user model.User
+	var resourceList []model.CategoryResourceRelation
 	var shareLinks []model.ShareLink
-	db.DB.Where("id = ?", product.MerchantID).Take(&merchant)
-	db.DB.Where("product_id = ?", productID).Order("sort asc, created_at asc").Find(&mediaList)
-	db.DB.Where("product_id = ?", productID).Order("created_at desc").Find(&shareLinks)
+	db.DB.Where("id = ?", category.UserID).Take(&user)
+	db.DB.Where("category_id = ?", categoryID).Order("sort asc, created_at asc").Find(&resourceList)
+	db.DB.Where("category_id = ?", categoryID).Order("created_at desc").Find(&shareLinks)
 
-	result.OkSetData(c, model.ProductDetail{
-		Product:    product,
-		Merchant:   merchant,
-		MediaList:  mediaList,
-		ShareLinks: shareLinks,
+	result.OkSetData(c, model.CategoryDetail{
+		Category:     category,
+		User:         user,
+		ResourceList: resourceList,
+		ShareLinks:   shareLinks,
 	})
 }
 
-func UploadProductMedia(c *gin.Context) {
-	productID := c.Param("id")
-	if productID == "" {
-		result.ErrSetMsg(c, "商品 ID 不能为空")
+func UploadCategoryResource(c *gin.Context) {
+	categoryID := c.Param("id")
+	if categoryID == "" {
+		result.ErrSetMsg(c, "分类 ID 不能为空")
 		return
 	}
-	currentMerchantID := util.CurrentMerchantID(c)
-	if currentMerchantID == "" {
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
 
-	var product model.Product
-	if err := db.DB.Where("id = ? AND merchant_id = ?", productID, currentMerchantID).Take(&product).Error; err != nil {
-		result.ErrSetMsg(c, "商品不存在")
+	var category model.Category
+	if err := db.DB.Where("id = ? AND user_id = ?", categoryID, currentUserID).Take(&category).Error; err != nil {
+		result.ErrSetMsg(c, "分类不存在")
 		return
 	}
 
@@ -195,19 +195,19 @@ func UploadProductMedia(c *gin.Context) {
 		return
 	}
 
-	mediaType := strings.TrimSpace(c.PostForm("mediaType"))
-	if mediaType == "" {
-		mediaType = inferMediaType(file.Header.Get("Content-Type"), file.Filename)
+	resourceType := strings.TrimSpace(c.PostForm("resourceType"))
+	if resourceType == "" {
+		resourceType = inferResourceType(file.Header.Get("Content-Type"), file.Filename)
 	}
 
 	sortValue, _ := strconv.Atoi(c.DefaultPostForm("sort", "0"))
 	now := util.GetTime()
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	relativePath := filepath.Join(
-		"products",
+		"categories",
 		now.Format("2006"),
 		now.Format("01"),
-		productID+"_"+util.GetUuid()[:8]+ext,
+		categoryID+"_"+util.GetUuid()[:8]+ext,
 	)
 	localDir := getUploadLocalDir()
 	fullPath := filepath.Join(localDir, relativePath)
@@ -222,44 +222,44 @@ func UploadProductMedia(c *gin.Context) {
 	}
 
 	publicURL := buildPublicAssetURL(c, relativePath)
-	resource := model.ResourceAsset{
+	resource := model.Resource{
 		ID:           util.GetUuid(),
-		MerchantID:   product.MerchantID,
-		ResourceType: mediaType,
+		UserID:       category.UserID,
+		ResourceType: resourceType,
 		FileName:     file.Filename,
 		FileExt:      ext,
 		FileSize:     file.Size,
 		MimeType:     file.Header.Get("Content-Type"),
 		StoragePath:  strings.ReplaceAll(relativePath, "\\", "/"),
 		URL:          publicURL,
-		Status:       "active",
+		Status:       model.ResourceStatusActive,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
-	asset := model.MediaAsset{
-		ID:         util.GetUuid(),
-		MerchantID: product.MerchantID,
-		ProductID:  productID,
-		ResourceID: resource.ID,
-		MediaType:  mediaType,
-		FileName:   file.Filename,
-		FileSize:   file.Size,
-		MimeType:   file.Header.Get("Content-Type"),
-		URL:        publicURL,
-		Sort:       sortValue,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+	relation := model.CategoryResourceRelation{
+		ID:           util.GetUuid(),
+		UserID:       category.UserID,
+		CategoryID:   categoryID,
+		ResourceID:   resource.ID,
+		ResourceType: resourceType,
+		FileName:     file.Filename,
+		FileSize:     file.Size,
+		MimeType:     file.Header.Get("Content-Type"),
+		URL:          publicURL,
+		Sort:         sortValue,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	if err = db.DB.Transaction(func(tx *gorm.DB) error {
 		if errTx := tx.Create(&resource).Error; errTx != nil {
 			return errTx
 		}
-		if errTx := tx.Create(&asset).Error; errTx != nil {
+		if errTx := tx.Create(&relation).Error; errTx != nil {
 			return errTx
 		}
-		if product.CoverURL == "" && mediaType == "image" {
-			if errTx := tx.Model(&model.Product{}).Where("id = ?", productID).Updates(map[string]interface{}{
+		if category.CoverURL == "" && resourceType == "image" {
+			if errTx := tx.Model(&model.Category{}).Where("id = ?", categoryID).Updates(map[string]interface{}{
 				"cover_url":  publicURL,
 				"updated_at": now,
 			}).Error; errTx != nil {
@@ -268,11 +268,11 @@ func UploadProductMedia(c *gin.Context) {
 		}
 		return nil
 	}); err != nil {
-		result.ErrSetMsg(c, "保存媒体资源失败")
+		result.ErrSetMsg(c, "保存分类资源失败")
 		return
 	}
 
-	result.OkSetData(c, asset)
+	result.OkSetData(c, relation)
 }
 
 func CreateShareLink(c *gin.Context) {
@@ -281,36 +281,36 @@ func CreateShareLink(c *gin.Context) {
 		result.ErrSetMsg(c, "分享参数错误")
 		return
 	}
-	currentMerchantID := util.CurrentMerchantID(c)
-	if currentMerchantID == "" {
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
-	if req.ProductID == "" {
-		result.ErrSetMsg(c, "商品 ID 不能为空")
+	if req.CategoryID == "" {
+		result.ErrSetMsg(c, "分类 ID 不能为空")
 		return
 	}
 
-	var merchant model.Merchant
-	if err := db.DB.Where("id = ?", currentMerchantID).Take(&merchant).Error; err != nil {
-		result.ErrSetMsg(c, "商家不存在")
+	var user model.User
+	if err := db.DB.Where("id = ?", currentUserID).Take(&user).Error; err != nil {
+		result.ErrSetMsg(c, "用户不存在")
 		return
 	}
 
-	var product model.Product
-	if err := db.DB.Where("id = ? AND merchant_id = ?", req.ProductID, currentMerchantID).Take(&product).Error; err != nil {
-		result.ErrSetMsg(c, "商品不存在或不属于当前商家")
+	var category model.Category
+	if err := db.DB.Where("id = ? AND user_id = ?", req.CategoryID, currentUserID).Take(&category).Error; err != nil {
+		result.ErrSetMsg(c, "分类不存在或不属于当前用户")
 		return
 	}
 
 	now := util.GetTime()
 	shareLink := model.ShareLink{
 		ID:          util.GetUuid(),
-		MerchantID:  currentMerchantID,
-		ProductID:   req.ProductID,
+		UserID:      currentUserID,
+		CategoryID:  req.CategoryID,
 		ShareCode:   util.GetUuid()[:10],
-		Title:       fallbackString(strings.TrimSpace(req.Title), product.Title),
-		Description: fallbackString(strings.TrimSpace(req.Description), product.Description),
+		Title:       fallbackString(strings.TrimSpace(req.Title), category.Name),
+		Description: fallbackString(strings.TrimSpace(req.Description), category.Description),
 		Status:      model.ShareStatusActive,
 		ExpiresAt:   req.ExpiresAt,
 		CreatedAt:   now,
@@ -345,18 +345,18 @@ func GetShareLinkDetail(c *gin.Context) {
 		return
 	}
 
-	var product model.Product
-	var merchant model.Merchant
-	var mediaList []model.MediaAsset
-	db.DB.Where("id = ?", shareLink.ProductID).Take(&product)
-	db.DB.Where("id = ?", shareLink.MerchantID).Take(&merchant)
-	db.DB.Where("product_id = ?", shareLink.ProductID).Order("sort asc, created_at asc").Find(&mediaList)
+	var category model.Category
+	var user model.User
+	var resourceList []model.CategoryResourceRelation
+	db.DB.Where("id = ?", shareLink.CategoryID).Take(&category)
+	db.DB.Where("id = ?", shareLink.UserID).Take(&user)
+	db.DB.Where("category_id = ?", shareLink.CategoryID).Order("sort asc, created_at asc").Find(&resourceList)
 	db.DB.Model(&model.ShareLink{}).Where("id = ?", shareLink.ID).UpdateColumn("view_count", gorm.Expr("view_count + 1"))
 	_ = db.DB.Create(&model.ShareViewLog{
 		ID:          util.GetUuid(),
 		ShareLinkID: shareLink.ID,
-		ProductID:   shareLink.ProductID,
-		MerchantID:  shareLink.MerchantID,
+		CategoryID:  shareLink.CategoryID,
+		UserID:      shareLink.UserID,
 		ViewerIP:    c.ClientIP(),
 		UserAgent:   c.GetHeader("User-Agent"),
 		Referer:     c.GetHeader("Referer"),
@@ -365,15 +365,15 @@ func GetShareLinkDetail(c *gin.Context) {
 	shareLink.ViewCount++
 
 	result.OkSetData(c, model.ShareView{
-		ShareLink: shareLink,
-		Product:   product,
-		Merchant:  merchant,
-		MediaList: mediaList,
-		ShareURL:  buildShareURL(c, shareCode),
+		ShareLink:    shareLink,
+		Category:     category,
+		User:         user,
+		ResourceList: resourceList,
+		ShareURL:     buildShareURL(c, shareCode),
 	})
 }
 
-func inferMediaType(contentType string, filename string) string {
+func inferResourceType(contentType string, filename string) string {
 	switch {
 	case strings.HasPrefix(contentType, "video/"):
 		return "video"

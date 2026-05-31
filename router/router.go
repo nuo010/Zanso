@@ -22,20 +22,20 @@ func NewRouter() *gin.Engine {
 	api := r.Group("/api")
 	platform := api.Group("/platform")
 	{
-		platform.POST("/merchants", service.CreateMerchant)
-		platform.POST("/auth/login", service.LoginMerchant)
+		platform.POST("/users", service.CreateUser)
+		platform.POST("/auth/login", service.LoginUser)
 	}
 
 	platformAuth := platform.Group("")
-	platformAuth.Use(handler.MerchantAuthRequired())
+	platformAuth.Use(handler.UserAuthRequired())
 	{
-		platformAuth.POST("/auth/logout", service.LogoutMerchant)
-		platformAuth.GET("/auth/profile", service.GetCurrentMerchantProfile)
-		platformAuth.GET("/merchants", service.GetMerchantList)
-		platformAuth.POST("/products", service.CreateProduct)
-		platformAuth.GET("/merchants/:merchantId/products", service.GetMerchantProductList)
-		platformAuth.GET("/products/:id", service.GetProductDetail)
-		platformAuth.POST("/products/:id/media", service.UploadProductMedia)
+		platformAuth.POST("/auth/logout", service.LogoutUser)
+		platformAuth.GET("/auth/profile", service.GetCurrentUserProfile)
+		platformAuth.GET("/users", service.GetUserList)
+		platformAuth.POST("/categories", service.CreateCategory)
+		platformAuth.GET("/users/:userId/categories", service.GetUserCategoryList)
+		platformAuth.GET("/categories/:id", service.GetCategoryDetail)
+		platformAuth.POST("/categories/:id/resources", service.UploadCategoryResource)
 		platformAuth.POST("/share-links", service.CreateShareLink)
 		platform.GET("/share-links/:code", service.GetShareLinkDetail)
 	}

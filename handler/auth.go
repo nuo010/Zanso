@@ -11,16 +11,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func MerchantAuthRequired() gin.HandlerFunc {
+func UserAuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := util.ExtractMerchantToken(c)
+		token := util.ExtractUserToken(c)
 		if token == "" {
 			result.ErrSetMsg(c, "未登录或登录令牌缺失")
 			c.Abort()
 			return
 		}
 
-		merchantID, err := db.RedisClient.Get(c.Request.Context(), "auth:merchant:token:"+token).Result()
+		userID, err := db.RedisClient.Get(c.Request.Context(), "auth:user:token:"+token).Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
 				result.ErrSetMsg(c, "登录状态已失效，请重新登录")
@@ -31,14 +31,14 @@ func MerchantAuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		var merchant model.Merchant
-		if err = db.DB.Where("id = ? AND status = ?", merchantID, model.MerchantStatusActive).Take(&merchant).Error; err != nil {
-			result.ErrSetMsg(c, "商家状态异常，请重新登录")
+		var user model.User
+		if err = db.DB.Where("id = ? AND status = ?", userID, model.UserStatusActive).Take(&user).Error; err != nil {
+			result.ErrSetMsg(c, "用户状态异常，请重新登录")
 			c.Abort()
 			return
 		}
 
-		c.Set(util.ContextMerchantKey, merchant)
+		c.Set(util.ContextUserKey, user)
 		c.Next()
 	}
 }

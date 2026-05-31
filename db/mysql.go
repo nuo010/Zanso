@@ -56,12 +56,12 @@ func Database() {
 
 func migration() {
 	err := DB.AutoMigrate(
-		&model.Merchant{},
+		&model.User{},
 		&model.Role{},
-		&model.MerchantRole{},
-		&model.Product{},
-		&model.ResourceAsset{},
-		&model.MediaAsset{},
+		&model.UserRole{},
+		&model.Category{},
+		&model.Resource{},
+		&model.CategoryResourceRelation{},
 		&model.ShareLink{},
 		&model.ShareViewLog{},
 	)
