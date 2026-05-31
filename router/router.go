@@ -40,28 +40,6 @@ func NewRouter() *gin.Engine {
 		platform.GET("/share-links/:code", service.GetShareLinkDetail)
 	}
 
-	legacy := api.Group("/legacy")
-	{
-		legacy.POST("getMemo", service.GetMemo)
-		legacy.POST("addMemo", service.AddMemo)
-		legacy.POST("delMemo", service.DelMemo)
-		legacy.POST("getTask", service.GetTask)
-		legacy.POST("addTask", service.AddTask)
-		legacy.POST("upDateTask", service.UpDateTask)
-		legacy.POST("delTask", service.DelTask)
-		legacy.POST("uploadFile", service.UploadFile)
-		legacy.POST("uploadFile2", service.UploadFile2)
-		legacy.POST("getFileList", service.GetTblFileList)
-		legacy.POST("getEmailList", service.GetEmail)
-		legacy.POST("addWeightRecord", service.AddWeightRecord)
-		legacy.POST("getWeightStatistics", service.GetWeightStatistics)
-		legacy.POST("getWeightRecordList", service.GetWeightRecordList)
-		legacy.POST("getQuotation", service.GetQuotation)
-		legacy.POST("GetWeightRecord", service.GetWeightRecord)
-		legacy.POST("GetWeightRecordPage", service.GetWeightRecordPage)
-		legacy.GET("getdy", service.GetUrl)
-	}
-
 	r.GET("/share/:code", service.GetShareLinkDetail)
 	return r
 }

@@ -56,11 +56,14 @@ func Database() {
 
 func migration() {
 	err := DB.AutoMigrate(
-		&model.TblFile{},
 		&model.Merchant{},
+		&model.Role{},
+		&model.MerchantRole{},
 		&model.Product{},
+		&model.ResourceAsset{},
 		&model.MediaAsset{},
 		&model.ShareLink{},
+		&model.ShareViewLog{},
 	)
 	if err != nil {
 		util.Log().Panic("数据库迁移失败: %v", err)

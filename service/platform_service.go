@@ -52,6 +52,16 @@ func CreateMerchant(c *gin.Context) {
 		result.ErrSetMsg(c, "创建商家失败")
 		return
 	}
+	var role model.Role
+	err = db.DB.Where("code = ?", model.RoleCodeMerchant).Take(&role).Error
+	if err == nil {
+		_ = db.DB.Create(&model.MerchantRole{
+			ID:         util.GetUuid(),
+			MerchantID: merchant.ID,
+			RoleID:     role.ID,
+			CreatedAt:  util.GetTime(),
+		}).Error
+	}
 	result.OkSetData(c, merchant)
 }
 
@@ -212,17 +222,25 @@ func UploadProductMedia(c *gin.Context) {
 	}
 
 	publicURL := buildPublicAssetURL(c, relativePath)
-	fileRecord := model.TblFile{
-		ID:        util.GetUuid(),
-		CreatTime: now,
-		Fsize:     file.Size,
-		Key:       publicURL,
-		Type:      mediaType,
+	resource := model.ResourceAsset{
+		ID:           util.GetUuid(),
+		MerchantID:   product.MerchantID,
+		ResourceType: mediaType,
+		FileName:     file.Filename,
+		FileExt:      ext,
+		FileSize:     file.Size,
+		MimeType:     file.Header.Get("Content-Type"),
+		StoragePath:  strings.ReplaceAll(relativePath, "\\", "/"),
+		URL:          publicURL,
+		Status:       "active",
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	asset := model.MediaAsset{
 		ID:         util.GetUuid(),
 		MerchantID: product.MerchantID,
 		ProductID:  productID,
+		ResourceID: resource.ID,
 		MediaType:  mediaType,
 		FileName:   file.Filename,
 		FileSize:   file.Size,
@@ -234,7 +252,7 @@ func UploadProductMedia(c *gin.Context) {
 	}
 
 	if err = db.DB.Transaction(func(tx *gorm.DB) error {
-		if errTx := tx.Create(&fileRecord).Error; errTx != nil {
+		if errTx := tx.Create(&resource).Error; errTx != nil {
 			return errTx
 		}
 		if errTx := tx.Create(&asset).Error; errTx != nil {
@@ -334,6 +352,16 @@ func GetShareLinkDetail(c *gin.Context) {
 	db.DB.Where("id = ?", shareLink.MerchantID).Take(&merchant)
 	db.DB.Where("product_id = ?", shareLink.ProductID).Order("sort asc, created_at asc").Find(&mediaList)
 	db.DB.Model(&model.ShareLink{}).Where("id = ?", shareLink.ID).UpdateColumn("view_count", gorm.Expr("view_count + 1"))
+	_ = db.DB.Create(&model.ShareViewLog{
+		ID:          util.GetUuid(),
+		ShareLinkID: shareLink.ID,
+		ProductID:   shareLink.ProductID,
+		MerchantID:  shareLink.MerchantID,
+		ViewerIP:    c.ClientIP(),
+		UserAgent:   c.GetHeader("User-Agent"),
+		Referer:     c.GetHeader("Referer"),
+		CreatedAt:   util.GetTime(),
+	}).Error
 	shareLink.ViewCount++
 
 	result.OkSetData(c, model.ShareView{
