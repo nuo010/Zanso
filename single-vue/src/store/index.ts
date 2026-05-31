@@ -16,6 +16,7 @@ export interface CategoryItem {
   name: string;
   description?: string;
   coverUrl?: string;
+  visible?: boolean;
   status?: string;
   createdAt?: string;
 }

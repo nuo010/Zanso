@@ -15,6 +15,10 @@
         <el-icon><FolderOpened /></el-icon>
         <span>分类管理</span>
       </el-menu-item>
+      <el-menu-item index="/shares">
+        <el-icon><Link /></el-icon>
+        <span>分享链接管理</span>
+      </el-menu-item>
       <el-menu-item index="/user">
         <el-icon><User /></el-icon>
         <span>个人中心</span>

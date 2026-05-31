@@ -5,7 +5,7 @@
         <div class="panel-header">
           <div>
             <h2>分类管理</h2>
-            <p>分类只管分组，分类项负责挂资源。展开分类项后直接看资源，操作都收在右侧，别整得花里胡哨。</p>
+            <p>分类和分类项都带可见性控制，分享时还能带过期时间，后台和分享治理放一块儿处理更顺手。</p>
           </div>
           <el-button type="primary" @click="openCreateCategoryDialog">新建分类</el-button>
         </div>
@@ -72,18 +72,24 @@
                     </template>
                   </el-table-column>
                   <el-table-column prop="name" min-width="220" />
-                  <el-table-column prop="description" min-width="260" />
-                  <el-table-column prop="status" width="120" />
-                  <el-table-column width="320" align="right">
+                  <el-table-column prop="description" min-width="240" />
+                  <el-table-column width="120">
+                    <template #default="{ row: itemRow }">
+                      <el-switch
+                        :model-value="itemRow.visible"
+                        active-text="可看"
+                        inactive-text="不可看"
+                        @change="handleToggleCategoryItemVisible(itemRow, $event)"
+                      />
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="status" width="110" />
+                  <el-table-column width="360" align="right">
                     <template #default="{ row: itemRow }">
                       <div class="row-actions">
                         <el-button link type="primary" @click="openUploadDialog(itemRow.categoryId, itemRow.id)">上传资源</el-button>
                         <el-button link type="primary" @click="openEditItemDialog(itemRow)">修改</el-button>
-                        <el-button
-                          link
-                          type="warning"
-                          @click="handleCreateItemShare(itemRow.categoryId, itemRow.id, itemRow.name, itemRow.description)"
-                        >
+                        <el-button link type="warning" @click="openShareDialog('item', itemRow.categoryId, itemRow.id, itemRow.name, itemRow.description)">
                           分享分类项
                         </el-button>
                         <el-button link type="danger" @click="confirmDeleteCategoryItem(itemRow.id, itemRow.categoryId)">
@@ -100,13 +106,23 @@
         </el-table-column>
 
         <el-table-column prop="name" label="分类名称" min-width="220" />
-        <el-table-column prop="description" label="描述" min-width="280" />
-        <el-table-column prop="status" label="状态" width="140" />
-        <el-table-column label="操作" width="320" align="right">
+        <el-table-column prop="description" label="描述" min-width="260" />
+        <el-table-column width="140">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.visible"
+              active-text="可看"
+              inactive-text="不可看"
+              @change="handleToggleCategoryVisible(row, $event)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="110" />
+        <el-table-column label="操作" width="340" align="right">
           <template #default="{ row }">
             <div class="row-actions">
               <el-button link type="primary" @click="openCreateItemDialog(row)">新建分类项</el-button>
-              <el-button link type="warning" @click="handleCreateCategoryShare(row.id, row.name, row.description)">分享分类</el-button>
+              <el-button link type="warning" @click="openShareDialog('category', row.id, '', row.name, row.description)">分享分类</el-button>
               <el-button link type="danger" @click="confirmDeleteCategory(row.id)">删除</el-button>
             </div>
           </template>
@@ -121,6 +137,9 @@
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="categoryForm.description" type="textarea" :rows="4" />
+        </el-form-item>
+        <el-form-item label="是否可看">
+          <el-switch v-model="categoryForm.visible" active-text="可看" inactive-text="不可看" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -144,10 +163,37 @@
         <el-form-item label="描述">
           <el-input v-model="categoryItemForm.description" type="textarea" :rows="4" />
         </el-form-item>
+        <el-form-item label="是否可看">
+          <el-switch v-model="categoryItemForm.visible" active-text="可看" inactive-text="不可看" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="categoryItemDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submittingCategoryItem" @click="handleSubmitCategoryItem">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="shareDialogVisible" :title="shareForm.targetType === 'item' ? '分享分类项' : '分享分类'" width="460px">
+      <el-form :model="shareForm" label-position="top">
+        <el-form-item label="分享标题">
+          <el-input v-model="shareForm.title" />
+        </el-form-item>
+        <el-form-item label="分享描述">
+          <el-input v-model="shareForm.description" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-form-item label="到期时间">
+          <el-date-picker
+            v-model="shareForm.expiresAt"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="不选则长期有效"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="shareDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submittingShare" @click="handleSubmitShare">生成分享链接</el-button>
       </template>
     </el-dialog>
 
@@ -177,6 +223,7 @@ import {
   deleteResource,
   getCategoryDetail,
   getCategoryItemDetail,
+  updateCategory,
   updateCategoryItem,
   uploadCategoryResource,
 } from '@/api/user';
@@ -187,9 +234,11 @@ const store = userMainStore();
 const loading = ref(false);
 const submittingCategory = ref(false);
 const submittingCategoryItem = ref(false);
+const submittingShare = ref(false);
 const uploading = ref(false);
 const createCategoryDialogVisible = ref(false);
 const categoryItemDialogVisible = ref(false);
+const shareDialogVisible = ref(false);
 const uploadDialogVisible = ref(false);
 const categoryItemDialogMode = ref<'create' | 'edit'>('create');
 
@@ -201,6 +250,7 @@ const itemLoadingMap = reactive<Record<string, boolean>>({});
 const categoryForm = reactive({
   name: '',
   description: '',
+  visible: true,
 });
 
 const categoryItemForm = reactive({
@@ -209,13 +259,22 @@ const categoryItemForm = reactive({
   categoryName: '',
   name: '',
   description: '',
+  visible: true,
   status: 'active',
+});
+
+const shareForm = reactive({
+  targetType: 'category' as 'category' | 'item',
+  categoryId: '',
+  categoryItemId: '',
+  title: '',
+  description: '',
+  expiresAt: '',
 });
 
 const uploadTargetCategoryId = ref('');
 const uploadTargetItemId = ref('');
 const selectedFile = ref<File | null>(null);
-
 const categoryItemParentName = ref('');
 
 async function refreshList() {
@@ -232,6 +291,7 @@ refreshList();
 function openCreateCategoryDialog() {
   categoryForm.name = '';
   categoryForm.description = '';
+  categoryForm.visible = true;
   createCategoryDialogVisible.value = true;
 }
 
@@ -242,6 +302,7 @@ function openCreateItemDialog(category: any) {
   categoryItemForm.categoryName = category.name;
   categoryItemForm.name = '';
   categoryItemForm.description = '';
+  categoryItemForm.visible = true;
   categoryItemForm.status = 'active';
   categoryItemParentName.value = category.name;
   categoryItemDialogVisible.value = true;
@@ -254,9 +315,26 @@ function openEditItemDialog(item: any) {
   categoryItemForm.categoryName = findCategoryName(item.categoryId);
   categoryItemForm.name = item.name;
   categoryItemForm.description = item.description || '';
+  categoryItemForm.visible = item.visible !== false;
   categoryItemForm.status = item.status || 'active';
   categoryItemParentName.value = categoryItemForm.categoryName;
   categoryItemDialogVisible.value = true;
+}
+
+function openShareDialog(
+  targetType: 'category' | 'item',
+  categoryId: string,
+  categoryItemId: string,
+  title: string,
+  description?: string
+) {
+  shareForm.targetType = targetType;
+  shareForm.categoryId = categoryId;
+  shareForm.categoryItemId = categoryItemId;
+  shareForm.title = title || '';
+  shareForm.description = description || '';
+  shareForm.expiresAt = '';
+  shareDialogVisible.value = true;
 }
 
 function findCategoryName(categoryId: string) {
@@ -279,6 +357,7 @@ async function handleCreateCategory() {
     await createCategory({
       name,
       description: categoryForm.description.trim(),
+      visible: categoryForm.visible,
       status: 'active',
     });
     toast('分类创建成功', 'success');
@@ -297,9 +376,7 @@ async function handleSubmitCategoryItem() {
   }
 
   const currentItems = expandedDetailMap[categoryItemForm.categoryId]?.categoryItems || [];
-  const duplicate = currentItems.some(
-    (item: any) => item.name === name && item.id !== categoryItemForm.id
-  );
+  const duplicate = currentItems.some((item: any) => item.name === name && item.id !== categoryItemForm.id);
   if (duplicate) {
     toast('分类项名称不能重复', 'warning');
     return;
@@ -311,6 +388,7 @@ async function handleSubmitCategoryItem() {
       await updateCategoryItem(categoryItemForm.id, {
         name,
         description: categoryItemForm.description.trim(),
+        visible: categoryItemForm.visible,
         status: categoryItemForm.status,
       });
       toast('分类项修改成功', 'success');
@@ -319,6 +397,7 @@ async function handleSubmitCategoryItem() {
         categoryId: categoryItemForm.categoryId,
         name,
         description: categoryItemForm.description.trim(),
+        visible: categoryItemForm.visible,
         status: 'active',
       });
       toast('分类项创建成功', 'success');
@@ -327,6 +406,24 @@ async function handleSubmitCategoryItem() {
     await loadCategoryDetail(categoryItemForm.categoryId);
   } finally {
     submittingCategoryItem.value = false;
+  }
+}
+
+async function handleSubmitShare() {
+  submittingShare.value = true;
+  try {
+    const res = await createShareLink({
+      categoryId: shareForm.categoryId,
+      categoryItemId: shareForm.categoryItemId || undefined,
+      targetType: shareForm.targetType,
+      title: shareForm.title.trim(),
+      description: shareForm.description.trim(),
+      expiresAt: shareForm.expiresAt || undefined,
+    });
+    toast(`分享链接已生成：${res.data.shareUrl}`, 'success');
+    shareDialogVisible.value = false;
+  } finally {
+    submittingShare.value = false;
   }
 }
 
@@ -351,17 +448,37 @@ async function loadCategoryItemDetail(id: string) {
 }
 
 function handleCategoryExpand(row: any, expandedRows: any[]) {
-  const expanded = expandedRows.some((item) => item.id === row.id);
-  if (expanded) {
+  if (expandedRows.some((item) => item.id === row.id)) {
     loadCategoryDetail(row.id);
   }
 }
 
 function handleCategoryItemExpand(row: any, expandedRows: any[]) {
-  const expanded = expandedRows.some((item) => item.id === row.id);
-  if (expanded) {
+  if (expandedRows.some((item) => item.id === row.id)) {
     loadCategoryItemDetail(row.id);
   }
+}
+
+async function handleToggleCategoryVisible(row: any, value: boolean) {
+  await updateCategory(row.id, {
+    name: row.name,
+    description: row.description,
+    visible: value,
+    status: row.status,
+  });
+  row.visible = value;
+  toast(`分类已切换为${value ? '可看' : '不可看'}`, 'success');
+}
+
+async function handleToggleCategoryItemVisible(row: any, value: boolean) {
+  await updateCategoryItem(row.id, {
+    name: row.name,
+    description: row.description,
+    visible: value,
+    status: row.status,
+  });
+  row.visible = value;
+  toast(`分类项已切换为${value ? '可看' : '不可看'}`, 'success');
 }
 
 function openUploadDialog(categoryId: string, categoryItemId: string) {
@@ -399,27 +516,6 @@ async function submitUpload() {
   } finally {
     uploading.value = false;
   }
-}
-
-async function handleCreateCategoryShare(categoryId: string, name: string, description?: string) {
-  const res = await createShareLink({
-    categoryId,
-    targetType: 'category',
-    title: name,
-    description,
-  });
-  toast(`分类分享已生成：${res.data.shareUrl}`, 'success');
-}
-
-async function handleCreateItemShare(categoryId: string, categoryItemId: string, name: string, description?: string) {
-  const res = await createShareLink({
-    categoryId,
-    categoryItemId,
-    targetType: 'item',
-    title: name,
-    description,
-  });
-  toast(`分类项分享已生成：${res.data.shareUrl}`, 'success');
 }
 
 async function confirmDeleteCategory(categoryId: string) {

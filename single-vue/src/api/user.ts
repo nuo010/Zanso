@@ -49,6 +49,7 @@ export function createCategory(data: {
   name: string;
   description?: string;
   coverUrl?: string;
+  visible?: boolean;
   status?: string;
 }) {
   return AxiosUtil({
@@ -60,8 +61,8 @@ export function createCategory(data: {
 
 export function deleteCategory(id: string) {
   return AxiosUtil({
-    url: `/api/platform/categories/${id}`,
-    method: 'delete',
+    url: `/api/platform/categories/${id}/delete`,
+    method: 'post',
   });
 }
 
@@ -84,6 +85,7 @@ export function createCategoryItem(data: {
   name: string;
   description?: string;
   coverUrl?: string;
+  visible?: boolean;
   status?: string;
 }) {
   return AxiosUtil({
@@ -98,20 +100,21 @@ export function updateCategoryItem(
   data: {
     name: string;
     description?: string;
+    visible?: boolean;
     status?: string;
   }
 ) {
   return AxiosUtil({
-    url: `/api/platform/category-items/${id}`,
-    method: 'put',
+    url: `/api/platform/category-items/${id}/update`,
+    method: 'post',
     data,
   });
 }
 
 export function deleteCategoryItem(id: string) {
   return AxiosUtil({
-    url: `/api/platform/category-items/${id}`,
-    method: 'delete',
+    url: `/api/platform/category-items/${id}/delete`,
+    method: 'post',
   });
 }
 
@@ -135,8 +138,8 @@ export function uploadCategoryResource(id: string, formData: FormData) {
 
 export function deleteResource(id: string) {
   return AxiosUtil({
-    url: `/api/platform/resources/${id}`,
-    method: 'delete',
+    url: `/api/platform/resources/${id}/delete`,
+    method: 'post',
   });
 }
 
@@ -160,5 +163,29 @@ export function getShareLinkDetail(code: string) {
     url: `/api/platform/share-links/${code}`,
     method: 'get',
     skipAuth: true,
+  });
+}
+
+export function updateCategory(
+  id: string,
+  data: {
+    name: string;
+    description?: string;
+    visible?: boolean;
+    status?: string;
+  }
+) {
+  return AxiosUtil({
+    url: `/api/platform/categories/${id}/update`,
+    method: 'post',
+    data,
+  });
+}
+
+export function getShareLinkList(params?: { categoryId?: string; categoryItemId?: string }) {
+  return AxiosUtil({
+    url: '/api/platform/share-links',
+    method: 'get',
+    params,
   });
 }

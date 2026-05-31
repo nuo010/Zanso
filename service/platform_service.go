@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 	"zanso/db"
 	"zanso/model"
 	"zanso/result"
@@ -104,6 +105,10 @@ func CreateCategory(c *gin.Context) {
 	if status == "" {
 		status = model.CategoryStatusDraft
 	}
+	visible := true
+	if req.Visible != nil {
+		visible = *req.Visible
+	}
 
 	category := model.Category{
 		ID:          util.GetUuid(),
@@ -111,6 +116,7 @@ func CreateCategory(c *gin.Context) {
 		Name:        strings.TrimSpace(req.Name),
 		Description: strings.TrimSpace(req.Description),
 		CoverURL:    strings.TrimSpace(req.CoverURL),
+		Visible:     visible,
 		Status:      status,
 		CreatedAt:   util.GetTime(),
 		UpdatedAt:   util.GetTime(),
@@ -119,6 +125,65 @@ func CreateCategory(c *gin.Context) {
 		result.ErrSetMsg(c, "创建分类失败")
 		return
 	}
+	result.OkSetData(c, category)
+}
+
+func UpdateCategory(c *gin.Context) {
+	categoryID := strings.TrimSpace(c.Param("id"))
+	if categoryID == "" {
+		result.ErrSetMsg(c, "分类 ID 不能为空")
+		return
+	}
+	var req model.UpdateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.ErrSetMsg(c, "分类参数错误")
+		return
+	}
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		result.ErrSetMsg(c, "分类名称不能为空")
+		return
+	}
+
+	var category model.Category
+	if err := db.DB.Where("id = ? AND user_id = ?", categoryID, currentUserID).Take(&category).Error; err != nil {
+		result.ErrSetMsg(c, "分类不存在")
+		return
+	}
+	if hasCategoryName(currentUserID, req.Name, categoryID) {
+		result.ErrSetMsg(c, "分类名称不能重复")
+		return
+	}
+
+	visible := category.Visible
+	if req.Visible != nil {
+		visible = *req.Visible
+	}
+	status := strings.TrimSpace(req.Status)
+	if status == "" {
+		status = category.Status
+	}
+	now := util.GetTime()
+	if err := db.DB.Model(&model.Category{}).Where("id = ?", categoryID).Updates(map[string]interface{}{
+		"name":        strings.TrimSpace(req.Name),
+		"description": strings.TrimSpace(req.Description),
+		"visible":     visible,
+		"status":      status,
+		"updated_at":  now,
+	}).Error; err != nil {
+		result.ErrSetMsg(c, "更新分类失败")
+		return
+	}
+
+	category.Name = strings.TrimSpace(req.Name)
+	category.Description = strings.TrimSpace(req.Description)
+	category.Visible = visible
+	category.Status = status
+	category.UpdatedAt = now
 	result.OkSetData(c, category)
 }
 
@@ -152,6 +217,10 @@ func CreateCategoryItem(c *gin.Context) {
 	if status == "" {
 		status = model.CategoryItemStatusDraft
 	}
+	visible := true
+	if req.Visible != nil {
+		visible = *req.Visible
+	}
 
 	item := model.CategoryItem{
 		ID:          util.GetUuid(),
@@ -160,6 +229,7 @@ func CreateCategoryItem(c *gin.Context) {
 		Name:        strings.TrimSpace(req.Name),
 		Description: strings.TrimSpace(req.Description),
 		CoverURL:    strings.TrimSpace(req.CoverURL),
+		Visible:     visible,
 		Status:      status,
 		CreatedAt:   util.GetTime(),
 		UpdatedAt:   util.GetTime(),
@@ -208,10 +278,15 @@ func UpdateCategoryItem(c *gin.Context) {
 	if status == "" {
 		status = item.Status
 	}
+	visible := item.Visible
+	if req.Visible != nil {
+		visible = *req.Visible
+	}
 	now := util.GetTime()
 	if err := db.DB.Model(&model.CategoryItem{}).Where("id = ?", itemID).Updates(map[string]interface{}{
 		"name":        strings.TrimSpace(req.Name),
 		"description": strings.TrimSpace(req.Description),
+		"visible":     visible,
 		"status":      status,
 		"updated_at":  now,
 	}).Error; err != nil {
@@ -221,6 +296,7 @@ func UpdateCategoryItem(c *gin.Context) {
 
 	item.Name = strings.TrimSpace(req.Name)
 	item.Description = strings.TrimSpace(req.Description)
+	item.Visible = visible
 	item.Status = status
 	item.UpdatedAt = now
 	result.OkSetData(c, item)
@@ -594,6 +670,10 @@ func CreateShareLink(c *gin.Context) {
 		result.ErrSetMsg(c, "分类不存在或不属于当前用户")
 		return
 	}
+	if !category.Visible {
+		result.ErrSetMsg(c, "当前分类不可分享")
+		return
+	}
 
 	var item *model.CategoryItem
 	if targetType == model.ShareTargetItem {
@@ -604,6 +684,10 @@ func CreateShareLink(c *gin.Context) {
 		var itemRecord model.CategoryItem
 		if err := db.DB.Where("id = ? AND category_id = ? AND user_id = ?", req.CategoryItemID, req.CategoryID, currentUserID).Take(&itemRecord).Error; err != nil {
 			result.ErrSetMsg(c, "分类项不存在或不属于当前分类")
+			return
+		}
+		if !itemRecord.Visible {
+			result.ErrSetMsg(c, "当前分类项不可分享")
 			return
 		}
 		item = &itemRecord
@@ -634,6 +718,79 @@ func CreateShareLink(c *gin.Context) {
 		"shareLink": shareLink,
 		"shareUrl":  buildShareURL(c, shareLink.ShareCode),
 	})
+}
+
+func GetShareLinkList(c *gin.Context) {
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+
+	categoryID := strings.TrimSpace(c.Query("categoryId"))
+	categoryItemID := strings.TrimSpace(c.Query("categoryItemId"))
+
+	query := db.DB.Table("tbl_share_link AS sl").
+		Select(`
+			sl.id, sl.share_code, sl.title, sl.description, sl.target_type, sl.category_id,
+			c.name AS category_name, sl.category_item_id, ci.name AS category_item_name,
+			sl.view_count, sl.status, sl.expires_at, sl.created_at, sl.updated_at
+		`).
+		Joins("LEFT JOIN tbl_category c ON c.id = sl.category_id").
+		Joins("LEFT JOIN tbl_category_item ci ON ci.id = sl.category_item_id").
+		Where("sl.user_id = ?", currentUserID)
+
+	if categoryID != "" {
+		query = query.Where("sl.category_id = ?", categoryID)
+	}
+	if categoryItemID != "" {
+		query = query.Where("sl.category_item_id = ?", categoryItemID)
+	}
+
+	type shareLinkRow struct {
+		ID               string
+		ShareCode        string
+		Title            string
+		Description      string
+		TargetType       string
+		CategoryID       string
+		CategoryName     string
+		CategoryItemID   string
+		CategoryItemName string
+		ViewCount        int64
+		Status           string
+		ExpiresAt        *time.Time
+		CreatedAt        time.Time
+		UpdatedAt        time.Time
+	}
+	var rows []shareLinkRow
+	if err := query.Order("sl.created_at desc").Scan(&rows).Error; err != nil {
+		result.ErrSetMsg(c, "查询分享链接失败")
+		return
+	}
+
+	list := make([]model.ShareLinkListItem, 0, len(rows))
+	for _, row := range rows {
+		list = append(list, model.ShareLinkListItem{
+			ID:               row.ID,
+			ShareCode:        row.ShareCode,
+			Title:            row.Title,
+			Description:      row.Description,
+			TargetType:       row.TargetType,
+			CategoryID:       row.CategoryID,
+			CategoryName:     row.CategoryName,
+			CategoryItemID:   row.CategoryItemID,
+			CategoryItemName: row.CategoryItemName,
+			ViewCount:        row.ViewCount,
+			Status:           row.Status,
+			ExpiresAt:        row.ExpiresAt,
+			CreatedAt:        row.CreatedAt,
+			UpdatedAt:        row.UpdatedAt,
+			ShareURL:         buildShareURL(c, row.ShareCode),
+		})
+	}
+
+	result.OkSetData(c, list)
 }
 
 func GetShareLinkDetail(c *gin.Context) {
@@ -677,14 +834,22 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 	var resourceList []model.CategoryResourceRelation
 	db.DB.Where("id = ?", shareLink.CategoryID).Take(&category)
 	db.DB.Where("id = ?", shareLink.UserID).Take(&user)
+	if !category.Visible {
+		result.ErrSetMsg(c, "分享内容当前不可查看")
+		return model.ShareView{}, false
+	}
 	if shareLink.TargetType == model.ShareTargetItem && shareLink.CategoryItemID != "" {
 		var itemRecord model.CategoryItem
 		if err := db.DB.Where("id = ?", shareLink.CategoryItemID).Take(&itemRecord).Error; err == nil {
 			item = &itemRecord
+			if !itemRecord.Visible {
+				result.ErrSetMsg(c, "分享内容当前不可查看")
+				return model.ShareView{}, false
+			}
 		}
 		db.DB.Where("category_item_id = ?", shareLink.CategoryItemID).Order("sort asc, created_at asc").Find(&resourceList)
 	} else {
-		db.DB.Where("category_id = ?", shareLink.CategoryID).Order("created_at asc").Find(&itemList)
+		db.DB.Where("category_id = ? AND visible = ?", shareLink.CategoryID, true).Order("created_at asc").Find(&itemList)
 		db.DB.Where("category_id = ?", shareLink.CategoryID).Order("sort asc, created_at asc").Find(&resourceList)
 	}
 	db.DB.Model(&model.ShareLink{}).Where("id = ?", shareLink.ID).UpdateColumn("view_count", gorm.Expr("view_count + 1"))

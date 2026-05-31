@@ -107,24 +107,27 @@ onMounted(async () => {
 <style scoped lang="scss">
 .share-page {
   min-height: 100vh;
-  background: radial-gradient(circle at top, #dfeadf 0, #f4efe6 42%, #f7f4ed 100%);
+  background:
+    radial-gradient(circle at top left, rgba(139, 180, 255, 0.18), transparent 30%),
+    radial-gradient(circle at right center, rgba(194, 225, 255, 0.18), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
   padding: 18px 12px 40px;
 }
 
 .share-card {
   max-width: 760px;
   margin: 0 auto;
-  background: rgba(255, 252, 246, 0.94);
-  border: 1px solid rgba(31, 45, 36, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(123, 162, 255, 0.16);
   border-radius: 28px;
   overflow: hidden;
-  box-shadow: 0 18px 50px rgba(31, 45, 36, 0.10);
+  box-shadow: 0 24px 60px rgba(36, 84, 170, 0.08);
 }
 
 .hero {
   padding: 22px 20px 18px;
-  background: linear-gradient(135deg, #315c45, #7fa082);
-  color: #fffef8;
+  background: linear-gradient(135deg, #2f6bff, #78bcff);
+  color: #fdfefe;
 }
 
 .eyebrow {
@@ -145,7 +148,7 @@ onMounted(async () => {
 
 .hero p {
   margin: 0;
-  color: rgba(255, 254, 248, 0.84);
+  color: rgba(253, 254, 255, 0.88);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -155,25 +158,25 @@ onMounted(async () => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 18px 20px;
-  background: #fcfaf4;
+  background: #f8fbff;
 }
 
 .meta-item {
   padding: 12px 14px;
   border-radius: 16px;
-  background: #f3efe4;
+  background: #eef5ff;
 }
 
 .meta-item span {
   display: block;
   font-size: 12px;
-  color: #7a867f;
+  color: #6d82a7;
   margin-bottom: 6px;
 }
 
 .meta-item strong {
   font-size: 14px;
-  color: #203529;
+  color: #17315f;
   word-break: break-all;
 }
 
@@ -192,7 +195,7 @@ onMounted(async () => {
 .section h2 {
   margin: 0 0 14px;
   font-size: 18px;
-  color: #203529;
+  color: #17315f;
 }
 
 .media-grid {
@@ -203,15 +206,16 @@ onMounted(async () => {
 .media-card {
   overflow: hidden;
   border-radius: 20px;
-  background: #f7f3ea;
-  border: 1px solid rgba(31, 45, 36, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(116, 153, 230, 0.16);
+  box-shadow: 0 14px 32px rgba(60, 102, 190, 0.08);
 }
 
 .media-card img,
 .media-card video {
   display: block;
   width: 100%;
-  background: #e8e3d7;
+  background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
 }
 
 .media-card video {
@@ -221,7 +225,7 @@ onMounted(async () => {
 .media-info {
   padding: 12px 14px;
   font-size: 13px;
-  color: #607267;
+  color: #6d82a7;
   display: flex;
   justify-content: space-between;
   gap: 12px;

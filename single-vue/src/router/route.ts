@@ -21,6 +21,11 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '个人中心' },
         component: () => import('@/views/user/user.vue'),
       },
+      {
+        path: '/shares',
+        meta: { title: '分享链接管理' },
+        component: () => import('@/views/pages/share-manage.vue'),
+      },
     ],
   },
   {

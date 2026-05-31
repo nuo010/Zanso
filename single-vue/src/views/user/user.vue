@@ -50,18 +50,19 @@ const store = userMainStore();
 <style scoped lang="scss">
 .profile-card {
   border-radius: 24px;
-  border: 1px solid rgba(32, 53, 41, 0.08);
-  background: rgba(255, 252, 246, 0.92);
+  border: 1px solid rgba(123, 162, 255, 0.16);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 20px 46px rgba(36, 84, 170, 0.08);
 }
 
 .profile-header h2 {
   margin: 0;
-  color: #203529;
+  color: #17315f;
 }
 
 .profile-header p {
   margin: 6px 0 0;
-  color: #6c7f73;
+  color: #6d82a7;
 }
 
 .profile-grid {
@@ -73,17 +74,18 @@ const store = userMainStore();
 .profile-item {
   padding: 16px;
   border-radius: 18px;
-  background: #f5f3eb;
+  background: #f4f8ff;
+  border: 1px solid rgba(123, 162, 255, 0.12);
 }
 
 .profile-item span {
   display: block;
-  color: #6c7f73;
+  color: #6d82a7;
   margin-bottom: 10px;
 }
 
 .profile-item strong {
-  color: #203529;
+  color: #17315f;
   word-break: break-all;
 }
 </style>

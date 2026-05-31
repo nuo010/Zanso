@@ -62,6 +62,7 @@ type Category struct {
 	Name        string    `json:"name" gorm:"size:160;not null"`
 	Description string    `json:"description" gorm:"type:text"`
 	CoverURL    string    `json:"coverUrl" gorm:"size:512"`
+	Visible     bool      `json:"visible" gorm:"not null;default:true"`
 	Status      string    `json:"status" gorm:"size:32;not null;default:draft"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
@@ -78,6 +79,7 @@ type CategoryItem struct {
 	Name        string    `json:"name" gorm:"size:160;not null"`
 	Description string    `json:"description" gorm:"type:text"`
 	CoverURL    string    `json:"coverUrl" gorm:"size:512"`
+	Visible     bool      `json:"visible" gorm:"not null;default:true"`
 	Status      string    `json:"status" gorm:"size:32;not null;default:draft"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
@@ -180,6 +182,14 @@ type CreateCategoryRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	CoverURL    string `json:"coverUrl"`
+	Visible     *bool  `json:"visible"`
+	Status      string `json:"status"`
+}
+
+type UpdateCategoryRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Visible     *bool  `json:"visible"`
 	Status      string `json:"status"`
 }
 
@@ -188,12 +198,14 @@ type CreateCategoryItemRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	CoverURL    string `json:"coverUrl"`
+	Visible     *bool  `json:"visible"`
 	Status      string `json:"status"`
 }
 
 type UpdateCategoryItemRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Visible     *bool  `json:"visible"`
 	Status      string `json:"status"`
 }
 
@@ -212,6 +224,24 @@ type CategoryDetail struct {
 	CategoryItems []CategoryItem             `json:"categoryItems"`
 	ResourceList  []CategoryResourceRelation `json:"resourceList"`
 	ShareLinks    []ShareLink                `json:"shareLinks,omitempty"`
+}
+
+type ShareLinkListItem struct {
+	ID               string     `json:"id"`
+	ShareCode        string     `json:"shareCode"`
+	Title            string     `json:"title"`
+	Description      string     `json:"description"`
+	TargetType       string     `json:"targetType"`
+	CategoryID       string     `json:"categoryId"`
+	CategoryName     string     `json:"categoryName"`
+	CategoryItemID   string     `json:"categoryItemId"`
+	CategoryItemName string     `json:"categoryItemName"`
+	ViewCount        int64      `json:"viewCount"`
+	Status           string     `json:"status"`
+	ExpiresAt        *time.Time `json:"expiresAt"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
+	ShareURL         string     `json:"shareUrl"`
 }
 
 type ShareView struct {
