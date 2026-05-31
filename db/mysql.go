@@ -60,6 +60,7 @@ func migration() {
 		&model.Role{},
 		&model.UserRole{},
 		&model.Category{},
+		&model.CategoryItem{},
 		&model.Resource{},
 		&model.CategoryResourceRelation{},
 		&model.ShareLink{},

@@ -29,6 +29,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/login/login.vue'),
   },
   {
+    path: '/share/:code',
+    meta: { title: '分享详情', public: true },
+    component: () => import('@/views/pages/share.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     meta: { title: '404' },
     component: () => import('@/views/pages/404.vue'),

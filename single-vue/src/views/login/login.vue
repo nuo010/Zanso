@@ -66,6 +66,8 @@ async function handleLogin() {
     await store.loadCategories();
     toast('登录成功', 'success');
     await router.push('/dashboard');
+  } catch (error) {
+    console.error('登录失败:', error);
   } finally {
     submitting.value = false;
   }

@@ -26,8 +26,9 @@ const store = userMainStore();
 .layout-shell {
   height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(210, 233, 214, 0.95), transparent 35%),
-    linear-gradient(180deg, #f6f2e8 0%, #edf4ef 100%);
+    radial-gradient(circle at top left, rgba(139, 180, 255, 0.22), transparent 28%),
+    radial-gradient(circle at right center, rgba(194, 225, 255, 0.2), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
 }
 
 .layout-header {
@@ -40,9 +41,10 @@ const store = userMainStore();
 }
 
 .layout-aside {
-  border-right: 1px solid rgba(32, 53, 41, 0.08);
-  background: rgba(255, 252, 246, 0.84);
-  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(129, 165, 235, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.5);
 }
 
 .layout-main {

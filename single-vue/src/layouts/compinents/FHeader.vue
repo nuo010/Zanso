@@ -68,9 +68,9 @@ async function handleCommand(command: string) {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: rgba(255, 252, 246, 0.9);
-  border-bottom: 1px solid rgba(32, 53, 41, 0.08);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.78);
+  border-bottom: 1px solid rgba(129, 165, 235, 0.16);
+  backdrop-filter: blur(18px);
 }
 
 .brand {
@@ -83,23 +83,24 @@ async function handleCommand(command: string) {
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #315c45, #6f9f7f);
-  color: #fffef8;
+  background: linear-gradient(135deg, #2f6bff, #69b7ff);
+  color: #fdfefe;
   display: grid;
   place-items: center;
   font-size: 20px;
   font-weight: 700;
+  box-shadow: 0 12px 24px rgba(47, 107, 255, 0.24);
 }
 
 .brand-title {
   font-size: 18px;
   font-weight: 700;
-  color: #203529;
+  color: #17315f;
 }
 
 .brand-subtitle {
   font-size: 12px;
-  color: #69806f;
+  color: #6d82a7;
 }
 
 .header-actions {
@@ -119,7 +120,7 @@ async function handleCommand(command: string) {
 }
 
 .user-box:hover {
-  background: rgba(49, 92, 69, 0.08);
+  background: rgba(47, 107, 255, 0.08);
 }
 
 .user-meta {
@@ -130,11 +131,11 @@ async function handleCommand(command: string) {
 
 .user-meta strong {
   font-size: 14px;
-  color: #203529;
+  color: #17315f;
 }
 
 .user-meta span {
   font-size: 12px;
-  color: #69806f;
+  color: #6d82a7;
 }
 </style>

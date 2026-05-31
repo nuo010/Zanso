@@ -58,6 +58,13 @@ export function createCategory(data: {
   });
 }
 
+export function deleteCategory(id: string) {
+  return AxiosUtil({
+    url: `/api/platform/categories/${id}`,
+    method: 'delete',
+  });
+}
+
 export function getUserCategories(userId: string) {
   return AxiosUtil({
     url: `/api/platform/users/${userId}/categories`,
@@ -68,6 +75,49 @@ export function getUserCategories(userId: string) {
 export function getCategoryDetail(id: string) {
   return AxiosUtil({
     url: `/api/platform/categories/${id}`,
+    method: 'get',
+  });
+}
+
+export function createCategoryItem(data: {
+  categoryId: string;
+  name: string;
+  description?: string;
+  coverUrl?: string;
+  status?: string;
+}) {
+  return AxiosUtil({
+    url: '/api/platform/category-items',
+    method: 'post',
+    data,
+  });
+}
+
+export function updateCategoryItem(
+  id: string,
+  data: {
+    name: string;
+    description?: string;
+    status?: string;
+  }
+) {
+  return AxiosUtil({
+    url: `/api/platform/category-items/${id}`,
+    method: 'put',
+    data,
+  });
+}
+
+export function deleteCategoryItem(id: string) {
+  return AxiosUtil({
+    url: `/api/platform/category-items/${id}`,
+    method: 'delete',
+  });
+}
+
+export function getCategoryItemDetail(id: string) {
+  return AxiosUtil({
+    url: `/api/platform/category-items/${id}`,
     method: 'get',
   });
 }
@@ -83,8 +133,17 @@ export function uploadCategoryResource(id: string, formData: FormData) {
   });
 }
 
+export function deleteResource(id: string) {
+  return AxiosUtil({
+    url: `/api/platform/resources/${id}`,
+    method: 'delete',
+  });
+}
+
 export function createShareLink(data: {
   categoryId: string;
+  categoryItemId?: string;
+  targetType?: 'category' | 'item';
   title?: string;
   description?: string;
   expiresAt?: string;
@@ -93,5 +152,13 @@ export function createShareLink(data: {
     url: '/api/platform/share-links',
     method: 'post',
     data,
+  });
+}
+
+export function getShareLinkDetail(code: string) {
+  return AxiosUtil({
+    url: `/api/platform/share-links/${code}`,
+    method: 'get',
+    skipAuth: true,
   });
 }

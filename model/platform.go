@@ -3,12 +3,16 @@ package model
 import "time"
 
 const (
-	UserStatusActive     = "active"
-	RoleCodeUser         = "user"
-	CategoryStatusDraft  = "draft"
-	CategoryStatusActive = "active"
-	ShareStatusActive    = "active"
-	ResourceStatusActive = "active"
+	UserStatusActive         = "active"
+	RoleCodeUser             = "user"
+	CategoryStatusDraft      = "draft"
+	CategoryStatusActive     = "active"
+	CategoryItemStatusDraft  = "draft"
+	CategoryItemStatusActive = "active"
+	ShareStatusActive        = "active"
+	ResourceStatusActive     = "active"
+	ShareTargetCategory      = "category"
+	ShareTargetItem          = "item"
 )
 
 type User struct {
@@ -67,6 +71,22 @@ func (Category) TableName() string {
 	return "tbl_category"
 }
 
+type CategoryItem struct {
+	ID          string    `json:"id" gorm:"primarykey;size:32"`
+	UserID      string    `json:"userId" gorm:"size:32;index;not null"`
+	CategoryID  string    `json:"categoryId" gorm:"size:32;index;not null"`
+	Name        string    `json:"name" gorm:"size:160;not null"`
+	Description string    `json:"description" gorm:"type:text"`
+	CoverURL    string    `json:"coverUrl" gorm:"size:512"`
+	Status      string    `json:"status" gorm:"size:32;not null;default:draft"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+func (CategoryItem) TableName() string {
+	return "tbl_category_item"
+}
+
 type Resource struct {
 	ID           string    `json:"id" gorm:"primarykey;size:32"`
 	UserID       string    `json:"userId" gorm:"size:32;index;not null"`
@@ -87,18 +107,19 @@ func (Resource) TableName() string {
 }
 
 type CategoryResourceRelation struct {
-	ID           string    `json:"id" gorm:"primarykey;size:32"`
-	UserID       string    `json:"userId" gorm:"size:32;index;not null"`
-	CategoryID   string    `json:"categoryId" gorm:"size:32;index;not null"`
-	ResourceID   string    `json:"resourceId" gorm:"size:32;index;not null"`
-	ResourceType string    `json:"resourceType" gorm:"size:32;not null"`
-	FileName     string    `json:"fileName" gorm:"size:255"`
-	FileSize     int64     `json:"fileSize"`
-	MimeType     string    `json:"mimeType" gorm:"size:128"`
-	URL          string    `json:"url" gorm:"size:512;not null"`
-	Sort         int       `json:"sort"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID             string    `json:"id" gorm:"primarykey;size:32"`
+	UserID         string    `json:"userId" gorm:"size:32;index;not null"`
+	CategoryID     string    `json:"categoryId" gorm:"size:32;index;not null"`
+	CategoryItemID string    `json:"categoryItemId" gorm:"size:32;index"`
+	ResourceID     string    `json:"resourceId" gorm:"size:32;index;not null"`
+	ResourceType   string    `json:"resourceType" gorm:"size:32;not null"`
+	FileName       string    `json:"fileName" gorm:"size:255"`
+	FileSize       int64     `json:"fileSize"`
+	MimeType       string    `json:"mimeType" gorm:"size:128"`
+	URL            string    `json:"url" gorm:"size:512;not null"`
+	Sort           int       `json:"sort"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 func (CategoryResourceRelation) TableName() string {
@@ -106,17 +127,19 @@ func (CategoryResourceRelation) TableName() string {
 }
 
 type ShareLink struct {
-	ID          string     `json:"id" gorm:"primarykey;size:32"`
-	UserID      string     `json:"userId" gorm:"size:32;index;not null"`
-	CategoryID  string     `json:"categoryId" gorm:"size:32;index;not null"`
-	ShareCode   string     `json:"shareCode" gorm:"size:32;uniqueIndex;not null"`
-	Title       string     `json:"title" gorm:"size:160"`
-	Description string     `json:"description" gorm:"type:text"`
-	Status      string     `json:"status" gorm:"size:32;not null;default:active"`
-	ViewCount   int64      `json:"viewCount"`
-	ExpiresAt   *time.Time `json:"expiresAt"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	ID             string     `json:"id" gorm:"primarykey;size:32"`
+	UserID         string     `json:"userId" gorm:"size:32;index;not null"`
+	CategoryID     string     `json:"categoryId" gorm:"size:32;index;not null"`
+	CategoryItemID string     `json:"categoryItemId" gorm:"size:32;index"`
+	TargetType     string     `json:"targetType" gorm:"size:32;index;not null;default:category"`
+	ShareCode      string     `json:"shareCode" gorm:"size:32;uniqueIndex;not null"`
+	Title          string     `json:"title" gorm:"size:160"`
+	Description    string     `json:"description" gorm:"type:text"`
+	Status         string     `json:"status" gorm:"size:32;not null;default:active"`
+	ViewCount      int64      `json:"viewCount"`
+	ExpiresAt      *time.Time `json:"expiresAt"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 }
 
 func (ShareLink) TableName() string {
@@ -124,14 +147,16 @@ func (ShareLink) TableName() string {
 }
 
 type ShareViewLog struct {
-	ID          string    `json:"id" gorm:"primarykey;size:32"`
-	ShareLinkID string    `json:"shareLinkId" gorm:"size:32;index;not null"`
-	CategoryID  string    `json:"categoryId" gorm:"size:32;index;not null"`
-	UserID      string    `json:"userId" gorm:"size:32;index;not null"`
-	ViewerIP    string    `json:"viewerIp" gorm:"size:64"`
-	UserAgent   string    `json:"userAgent" gorm:"size:512"`
-	Referer     string    `json:"referer" gorm:"size:512"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ID             string    `json:"id" gorm:"primarykey;size:32"`
+	ShareLinkID    string    `json:"shareLinkId" gorm:"size:32;index;not null"`
+	CategoryID     string    `json:"categoryId" gorm:"size:32;index;not null"`
+	CategoryItemID string    `json:"categoryItemId" gorm:"size:32;index"`
+	TargetType     string    `json:"targetType" gorm:"size:32;index;not null"`
+	UserID         string    `json:"userId" gorm:"size:32;index;not null"`
+	ViewerIP       string    `json:"viewerIp" gorm:"size:64"`
+	UserAgent      string    `json:"userAgent" gorm:"size:512"`
+	Referer        string    `json:"referer" gorm:"size:512"`
+	CreatedAt      time.Time `json:"createdAt"`
 }
 
 func (ShareViewLog) TableName() string {
@@ -158,26 +183,45 @@ type CreateCategoryRequest struct {
 	Status      string `json:"status"`
 }
 
+type CreateCategoryItemRequest struct {
+	CategoryID  string `json:"categoryId"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	CoverURL    string `json:"coverUrl"`
+	Status      string `json:"status"`
+}
+
+type UpdateCategoryItemRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+}
+
 type CreateShareLinkRequest struct {
-	CategoryID  string     `json:"categoryId"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	ExpiresAt   *time.Time `json:"expiresAt"`
+	CategoryID     string     `json:"categoryId"`
+	CategoryItemID string     `json:"categoryItemId"`
+	TargetType     string     `json:"targetType"`
+	Title          string     `json:"title"`
+	Description    string     `json:"description"`
+	ExpiresAt      *time.Time `json:"expiresAt"`
 }
 
 type CategoryDetail struct {
-	Category     Category                   `json:"category"`
-	User         User                       `json:"user"`
-	ResourceList []CategoryResourceRelation `json:"resourceList"`
-	ShareLinks   []ShareLink                `json:"shareLinks,omitempty"`
+	Category      Category                   `json:"category"`
+	User          User                       `json:"user"`
+	CategoryItems []CategoryItem             `json:"categoryItems"`
+	ResourceList  []CategoryResourceRelation `json:"resourceList"`
+	ShareLinks    []ShareLink                `json:"shareLinks,omitempty"`
 }
 
 type ShareView struct {
-	ShareLink    ShareLink                  `json:"shareLink"`
-	Category     Category                   `json:"category"`
-	User         User                       `json:"user"`
-	ResourceList []CategoryResourceRelation `json:"resourceList"`
-	ShareURL     string                     `json:"shareUrl"`
+	ShareLink     ShareLink                  `json:"shareLink"`
+	Category      Category                   `json:"category"`
+	CategoryItem  *CategoryItem              `json:"categoryItem,omitempty"`
+	CategoryItems []CategoryItem             `json:"categoryItems,omitempty"`
+	User          User                       `json:"user"`
+	ResourceList  []CategoryResourceRelation `json:"resourceList"`
+	ShareURL      string                     `json:"shareUrl"`
 }
 
 type UserAuthResponse struct {

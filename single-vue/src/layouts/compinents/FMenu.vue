@@ -48,14 +48,22 @@ function handleSelect(path: string) {
 
 .menu-panel :deep(.el-menu-item),
 .menu-panel :deep(.el-sub-menu__title) {
-  border-radius: 14px;
-  margin-bottom: 8px;
-  color: #385441;
+  border-radius: 16px;
+  margin-bottom: 10px;
+  color: #47658f;
+  height: 46px;
+  line-height: 46px;
 }
 
 .menu-panel :deep(.el-menu-item.is-active) {
-  background: linear-gradient(135deg, rgba(49, 92, 69, 0.14), rgba(163, 196, 172, 0.28));
-  color: #203529;
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.14), rgba(120, 188, 255, 0.26));
+  color: #17315f;
   font-weight: 700;
+  box-shadow: 0 10px 22px rgba(47, 107, 255, 0.12);
+}
+
+.menu-panel :deep(.el-menu-item:hover),
+.menu-panel :deep(.el-sub-menu__title:hover) {
+  background: rgba(47, 107, 255, 0.06);
 }
 </style>

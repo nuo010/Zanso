@@ -33,13 +33,19 @@ func NewRouter() *gin.Engine {
 		platformAuth.GET("/auth/profile", service.GetCurrentUserProfile)
 		platformAuth.GET("/users", service.GetUserList)
 		platformAuth.POST("/categories", service.CreateCategory)
+		platformAuth.DELETE("/categories/:id", service.DeleteCategory)
+		platformAuth.POST("/category-items", service.CreateCategoryItem)
+		platformAuth.PUT("/category-items/:id", service.UpdateCategoryItem)
+		platformAuth.DELETE("/category-items/:id", service.DeleteCategoryItem)
 		platformAuth.GET("/users/:userId/categories", service.GetUserCategoryList)
 		platformAuth.GET("/categories/:id", service.GetCategoryDetail)
+		platformAuth.GET("/category-items/:id", service.GetCategoryItemDetail)
 		platformAuth.POST("/categories/:id/resources", service.UploadCategoryResource)
+		platformAuth.DELETE("/resources/:id", service.DeleteResource)
 		platformAuth.POST("/share-links", service.CreateShareLink)
 		platform.GET("/share-links/:code", service.GetShareLinkDetail)
 	}
 
-	r.GET("/share/:code", service.GetShareLinkDetail)
+	r.GET("/share/:code", service.RenderSharePage)
 	return r
 }

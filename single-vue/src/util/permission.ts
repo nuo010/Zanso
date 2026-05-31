@@ -5,6 +5,10 @@ import { hideFullLoading } from './util';
 const whiteList = ['/login'];
 
 router.beforeEach((to, _from, next) => {
+  if (to.meta.public) {
+    document.title = String(to.meta.title || '');
+    return next();
+  }
   const token = getToken();
   if (!token && !whiteList.includes(to.path)) {
     return next({ path: '/login' });
