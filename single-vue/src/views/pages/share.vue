@@ -1,37 +1,24 @@
 <template>
   <div class="share-page" v-loading="loading">
+    <div v-if="errorMessage" class="share-card share-empty-card">
+      <section class="empty-state">
+        <span class="eyebrow">Zanso Share</span>
+        <h1>分享不可用</h1>
+        <p>{{ errorMessage }}</p>
+      </section>
+    </div>
     <div v-if="detail" class="share-card">
       <section class="hero">
         <span class="eyebrow">Zanso Share</span>
-        <h1>{{ detail.shareLink.title }}</h1>
+        <h1>{{ heroTitle }}</h1>
         <p>{{ descriptionText }}</p>
-      </section>
-
-      <section class="meta-grid">
-        <div class="meta-item">
-          <span>发布用户</span>
-          <strong>{{ detail.user.name }}</strong>
-        </div>
-        <div class="meta-item">
-          <span>所属分类</span>
-          <strong>{{ detail.category.name }}</strong>
-        </div>
-        <div class="meta-item">
-          <span>分享对象</span>
-          <strong>{{ detail.categoryItem?.name || detail.category.name }}</strong>
-        </div>
-        <div class="meta-item">
-          <span>浏览次数</span>
-          <strong>{{ detail.shareLink.viewCount }}</strong>
-        </div>
       </section>
 
       <section v-if="isCategoryShare && detail.categoryItems?.length" class="section">
         <div class="section-header">
           <h2>分类项筛选</h2>
-          <el-segmented v-model="selectedFilter" :options="filterOptions" />
         </div>
-        <p v-if="selectedItemDescription" class="filter-description">{{ selectedItemDescription }}</p>
+        <el-segmented v-model="selectedFilter" :options="filterOptions" class="filter-segmented" />
       </section>
 
       <section class="section">
@@ -48,6 +35,13 @@
         </div>
         <el-empty v-if="filteredResources.length === 0" description="当前筛选条件下没有资源" />
       </section>
+
+      <section class="meta-inline">
+        <span>发布用户：{{ detail.user.name }}</span>
+        <span>所属分类：{{ detail.category.name }}</span>
+        <span>分享对象：{{ selectedCategoryItem?.name || detail.categoryItem?.name || detail.category.name }}</span>
+        <span>浏览次数：{{ detail.shareLink.viewCount }}</span>
+      </section>
     </div>
   </div>
 </template>
@@ -56,11 +50,11 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { getShareLinkDetail } from '@/api/user';
-import { toast } from '@/util/util';
 
 const route = useRoute();
 const loading = ref(false);
 const detail = ref<any>(null);
+const errorMessage = ref('');
 const selectedFilter = ref('all');
 
 const isCategoryShare = computed(() => detail.value?.shareLink?.targetType === 'category');
@@ -68,8 +62,18 @@ const selectedCategoryItem = computed(() => {
   if (!detail.value?.categoryItems?.length || selectedFilter.value === 'all') return null;
   return detail.value.categoryItems.find((item: any) => item.id === selectedFilter.value) || null;
 });
+const heroTitle = computed(() => {
+  if (!detail.value) return '';
+  if (selectedCategoryItem.value?.name) {
+    return selectedCategoryItem.value.name;
+  }
+  return detail.value.shareLink.title || detail.value.categoryItem?.name || detail.value.category.name || '';
+});
 const descriptionText = computed(() => {
   if (!detail.value) return '';
+  if (selectedCategoryItem.value?.description) {
+    return selectedCategoryItem.value.description;
+  }
   if (isCategoryShare.value) {
     return detail.value.category.description || detail.value.shareLink.description || '暂无描述';
   }
@@ -103,13 +107,23 @@ const filteredResources = computed(() => {
 onMounted(async () => {
   const code = String(route.params.code || '');
   if (!code) {
-    toast('分享码不存在', 'error');
+    errorMessage.value = '分享链接不存在或分享码无效。';
     return;
   }
   loading.value = true;
   try {
     const res = await getShareLinkDetail(code);
     detail.value = res.data;
+    errorMessage.value = '';
+  } catch (error: any) {
+    const message = error?.message || '分享链接不存在';
+    if (message.includes('过期')) {
+      errorMessage.value = '这个分享链接已过期，暂时无法查看。';
+    } else if (message.includes('不可查看') || message.includes('不可看')) {
+      errorMessage.value = '当前分享内容已被关闭查看权限。';
+    } else {
+      errorMessage.value = '这个分享链接不存在，可能已被删除。';
+    }
   } finally {
     loading.value = false;
   }
@@ -134,6 +148,31 @@ onMounted(async () => {
   border-radius: 28px;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(36, 84, 170, 0.08);
+}
+
+.share-empty-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+
+.empty-state {
+  padding: 42px 28px;
+  text-align: center;
+}
+
+.empty-state h1 {
+  margin: 18px 0 10px;
+  font-size: 32px;
+  color: #17315f;
+}
+
+.empty-state p {
+  margin: 0;
+  color: #6d82a7;
+  font-size: 15px;
+  line-height: 1.8;
 }
 
 .hero {
@@ -165,43 +204,12 @@ onMounted(async () => {
   line-height: 1.7;
 }
 
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  padding: 14px 20px;
-  background: #f8fbff;
-}
-
-.meta-item {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #eef5ff;
-}
-
-.meta-item span {
-  display: block;
-  font-size: 11px;
-  color: #6d82a7;
-  margin-bottom: 4px;
-}
-
-.meta-item strong {
-  font-size: 13px;
-  color: #17315f;
-  word-break: break-all;
-}
-
 .section {
   padding: 20px;
 }
 
 .section-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
+  display: block;
 }
 
 .section h2 {
@@ -210,14 +218,9 @@ onMounted(async () => {
   color: #17315f;
 }
 
-.filter-description {
-  margin: 14px 0 0;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: #f4f8ff;
-  color: #5f76a0;
-  line-height: 1.7;
-  font-size: 13px;
+.filter-segmented {
+  display: inline-flex;
+  margin-top: 4px;
 }
 
 .media-grid {
@@ -253,6 +256,20 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.meta-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding: 0 20px 20px;
+  color: #7b8dad;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.meta-inline span {
+  white-space: nowrap;
+}
+
 @media (min-width: 768px) {
   .share-page {
     padding: 30px 24px 56px;
@@ -270,9 +287,8 @@ onMounted(async () => {
     padding: 24px 28px;
   }
 
-  .meta-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    padding: 16px 28px;
+  .meta-inline {
+    padding: 0 28px 24px;
   }
 }
 </style>

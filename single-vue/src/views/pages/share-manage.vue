@@ -24,8 +24,14 @@
         <el-table-column label="二级标题" min-width="240">
           <template #default="{ row }">
             <div class="share-title-block">
-              <strong>{{ row.title }}</strong>
-              <span>{{ row.targetType === 'item' ? row.categoryItemName || row.categoryName : row.categoryName }}</span>
+              <strong>
+                {{
+                  row.targetType === 'item'
+                    ? `${row.categoryName} -> ${row.categoryItemName || '未命名分类项'}`
+                    : row.categoryName
+                }}
+              </strong>
+              <span>{{ row.title }}</span>
             </div>
           </template>
         </el-table-column>
