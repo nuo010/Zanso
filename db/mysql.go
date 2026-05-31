@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"zanso/model"
 	"zanso/util"
 
 	"gorm.io/driver/mysql"
@@ -50,5 +51,18 @@ func Database() {
 	sqlDB.SetMaxOpenConns(20)
 	DB = db
 
-	//migration()
+	migration()
+}
+
+func migration() {
+	err := DB.AutoMigrate(
+		&model.TblFile{},
+		&model.Merchant{},
+		&model.Product{},
+		&model.MediaAsset{},
+		&model.ShareLink{},
+	)
+	if err != nil {
+		util.Log().Panic("数据库迁移失败: %v", err)
+	}
 }

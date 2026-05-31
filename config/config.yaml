@@ -14,3 +14,13 @@ redis:
   password: redisPwd@123!
   port: 6379
   database: 0
+
+storage:
+  local_dir: ./uploads
+  public_base_url: ""
+
+share:
+  base_url: ""
+
+auth:
+  session_ttl_hours: 168
