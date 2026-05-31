@@ -1,0 +1,18 @@
+viper  配置文件读取
+req，https://resty.dev  http
+caarlos0/env 环境变量获取
+humanize  文件容量转换
+fsnotify  文件监控
+shirou / gopsutil  cpu内存信息获取
+tidwall / gjson  json操作
+cast  类型转换
+cron 定时任务
+https://goreleaser.com/  交叉编译
+carbon 时间日期处理库
+logrus  日志库
+
+cobra 眼镜蛇
+
+
+goreleaser release --snapshot --rm-dist
+goreleaser release --snapshot --clean
