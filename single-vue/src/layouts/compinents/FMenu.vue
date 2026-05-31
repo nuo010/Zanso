@@ -1,82 +1,61 @@
 <template>
-  <div class="f-menu" :style="{ width: store.asideWidth }">
+  <div class="menu-wrap">
     <el-menu
-      :default-active="defaultActive"
-      class="border-0"
-      :collapse="isCollapse"
+      :default-active="route.path"
+      :collapse="store.isCollapse"
       :collapse-transition="false"
-      unique-opened
+      class="menu-panel"
       @select="handleSelect"
     >
-      <template v-for="(item, index) in asideMenus" :key="index">
-        <el-sub-menu
-          :index="item.title"
-          v-if="item.children && item.children.length > 0"
-        >
-<!--     有子菜单的一级菜单     -->
-          <!-- 第一级别  -->
-          <template #title>
-            <el-icon>
-              <component :is="item.meta.icon"></component>
-            </el-icon>
-
-            <span v-if="!isCollapse">{{ item.title }}</span>
-
-          </template>
-          <!-- 第二级别 -->
-          <template v-for="item2 in item.children">
-            <el-menu-item :index="item2.path">
-              <el-icon>
-                <component :is="item2.meta.icon"></component>
-              </el-icon>
-              <span v-if="!isCollapse">{{ item2.title }}</span>
-            </el-menu-item>
-          </template>
-        </el-sub-menu>
-<!--    没有子菜单的 普通菜单    -->
-        <el-menu-item v-else :index="item.path">
-          <el-icon>
-            <component :is="item.meta.icon"></component>
-          </el-icon>
-          <span v-if="!isCollapse">{{ item.title }}</span>
-        </el-menu-item>
-      </template>
+      <el-menu-item index="/dashboard">
+        <el-icon><House /></el-icon>
+        <span>控制台</span>
+      </el-menu-item>
+      <el-menu-item index="/categories">
+        <el-icon><FolderOpened /></el-icon>
+        <span>分类管理</span>
+      </el-menu-item>
+      <el-menu-item index="/user">
+        <el-icon><User /></el-icon>
+        <span>个人中心</span>
+      </el-menu-item>
     </el-menu>
   </div>
 </template>
 
-<script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { userMainStore } from '@/store/';
-import {globalMenuAsideWidthBig} from "@/util/constants";
-const store = userMainStore();
+<script setup lang="ts">
+import { useRoute, useRouter } from 'vue-router';
+import { userMainStore } from '@/store';
+
 const router = useRouter();
 const route = useRoute();
-const isCollapse = computed(() => !(store.asideWidth == globalMenuAsideWidthBig));
-// 默认选中
-const defaultActive = ref(route.path);
-const asideMenus: Array<any> = store.menuTree;
-const handleSelect = (e: any) => {
-  router.push(e);
-};
+const store = userMainStore();
+
+function handleSelect(path: string) {
+  router.push(path);
+}
 </script>
 
 <style scoped lang="scss">
-/* 悬浮效果 */
-.f-menu .el-menu-item:hover,
-.f-menu .el-sub-menu__title:hover {
-  background: #f5f7fa;
-  color: #409eff;
+.menu-wrap {
+  padding: 18px 12px;
 }
 
-/* 选中时统一加背景色和左侧高亮条 - 增强视觉效果 */
-.f-menu .el-menu-item.is-active,
-.f-menu .el-sub-menu__title.is-active {
-  background: #b3d8ff !important; /* 更深的蓝色背景，更明显 */
-  color: #1890ff !important; /* 更深的蓝色文字 */
-  font-weight: 600 !important; /* 加粗文字 */
-  border-left-color: #1890ff !important; /* 更深的蓝色边框 */
-  border-left-width: 4px !important; /* 加粗左侧边框 */
+.menu-panel {
+  border-right: none;
+  background: transparent;
+}
+
+.menu-panel :deep(.el-menu-item),
+.menu-panel :deep(.el-sub-menu__title) {
+  border-radius: 14px;
+  margin-bottom: 8px;
+  color: #385441;
+}
+
+.menu-panel :deep(.el-menu-item.is-active) {
+  background: linear-gradient(135deg, rgba(49, 92, 69, 0.14), rgba(163, 196, 172, 0.28));
+  color: #203529;
+  font-weight: 700;
 }
 </style>

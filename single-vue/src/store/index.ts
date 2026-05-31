@@ -1,65 +1,64 @@
 import { defineStore } from 'pinia';
-import {globalMenuAsideWidthBig, globalMenuAsideWidthLittle} from "@/util/constants";
-import {getMenuList, getMenuTree} from "@/api/user";
+import { globalMenuAsideWidthBig, globalMenuAsideWidthLittle } from '@/util/constants';
+import { getCurrentUser, getUserCategories } from '@/api/user';
 
+export interface PlatformUser {
+  id: string;
+  name: string;
+  loginName: string;
+  contactName?: string;
+  contactPhone?: string;
+  status?: string;
+}
 
-interface User {
-  userId: string;
-  nickName: string;
-  userName?: string;
-  email?: string;
-  ipaddr?: string;
+export interface CategoryItem {
+  id: string;
+  name: string;
+  description?: string;
+  coverUrl?: string;
+  status?: string;
+  createdAt?: string;
 }
 
 export const userMainStore = defineStore('main', {
   persist: {
-    enabled: true, //开启数据持久化
+    enabled: true,
     strategies: [
       {
-        key: 'singleLocalStorage', //给一个要保存的名称
-        storage: localStorage, //sessionStorage / localStorage 存储方式
+        key: 'zansoLocalStorage',
+        storage: localStorage,
       },
     ],
   },
-  state: () => {
-    return {
-      user: {} as User,
-      menuTree: [],
-      // 侧边宽度
-      asideWidth: globalMenuAsideWidthBig,
-      // 实时在线人数（WebSocket）
-      onlineCount: 0,
-      wsOnlineStatus: 'closed' as 'connecting' | 'connected' | 'closed' | 'error',
-    };
-  },
+  state: () => ({
+    user: {} as PlatformUser,
+    categories: [] as CategoryItem[],
+    asideWidth: globalMenuAsideWidthBig,
+  }),
   getters: {
-    getUserId: (state) => {
-      return state.user.userId || '';
-    },
+    getUserId: (state) => state.user.id || '',
+    isCollapse: (state) => state.asideWidth !== globalMenuAsideWidthBig,
   },
   actions: {
-    async loadMenu() {
-      const menuListRes = await getMenuTree({isTree:1,type: import.meta.env.VITE_API_SYSTEM_ID})
-      this.menuTree =  menuListRes.data
+    async loadProfile() {
+      const res = await getCurrentUser();
+      this.user = res.data;
+      return res.data;
     },
-    setUserStore(user: any) {
+    async loadCategories() {
+      if (!this.user.id) return [];
+      const res = await getUserCategories(this.user.id);
+      this.categories = res.data || [];
+      return this.categories;
+    },
+    setUserStore(user: PlatformUser) {
       this.user = user;
     },
-    setMenuTreeStore(menuTree: any) {
-      console.log('store:menuTree', menuTree);
-      this.menuTree = menuTree;
-    },
     handleAsideWidth() {
-      this.asideWidth = this.asideWidth == globalMenuAsideWidthBig ? globalMenuAsideWidthLittle : globalMenuAsideWidthBig;
+      this.asideWidth = this.asideWidth === globalMenuAsideWidthBig ? globalMenuAsideWidthLittle : globalMenuAsideWidthBig;
     },
     resetAll() {
       this.$reset();
-    },
-    setOnlineCount(count: number) {
-      this.onlineCount = count;
-    },
-    setWsOnlineStatus(status: 'connecting' | 'connected' | 'closed' | 'error') {
-      this.wsOnlineStatus = status;
     },
   },
 });

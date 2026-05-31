@@ -3,26 +3,20 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted } from 'vue'
-import { userMainStore } from '@/store'
-import { useRoute, useRouter } from 'vue-router'
+import { onMounted } from 'vue';
+import { userMainStore } from '@/store';
+import { useRoute } from 'vue-router';
 
-const store = userMainStore()
-const route = useRoute()
-const router = useRouter()
+const store = userMainStore();
+const route = useRoute();
 
 onMounted(async () => {
-  // 等路由完成初始导航后再取 path，否则可能一直是 /
-  await router.isReady()
-  const path = route.path
-  console.log('app.vue onmounted 当前路由:', path)
-  if (path === '/login' || path === '/') return
-  await store.loadMenu()
-})
-
-
-
-
+  if (route.path === '/login') return;
+  if (!store.user.id) {
+    await store.loadProfile();
+  }
+  await store.loadCategories();
+});
 </script>
 
 

@@ -1,87 +1,97 @@
 import AxiosUtil from '@/util/axios';
 
-
-export function doLogin(userName: string, passWord: string){
+export function createUser(data: {
+  name: string;
+  loginName: string;
+  password: string;
+  contactName?: string;
+  contactPhone?: string;
+}) {
   return AxiosUtil({
-      url:"/singleAuth/login",
-      method:"post",
-      data:{
-          userName,
-          passWord
-      }
-    }
-  )
+    url: '/api/platform/users',
+    method: 'post',
+    data,
+    skipAuth: true,
+  });
 }
 
-export function registerEmail(userName: string, passWord: string, email?: string, code?: string){
+export function loginUser(data: { loginName: string; password: string }) {
   return AxiosUtil({
-      url:"/singleAuth/registerEmail",
-      method:"post",
-      data:{
-          userName,
-          passWord,
-          email,
-          code
-      }
-    }
-  )
+    url: '/api/platform/auth/login',
+    method: 'post',
+    data,
+    skipAuth: true,
+  });
 }
 
-export function sendEmailCode(email: string){
+export function logoutUser() {
   return AxiosUtil({
-      url:"/singleMessagePush/sendEmailCode",
-      method:"post",
-      data:{
-          email
-      }
-    }
-  )
+    url: '/api/platform/auth/logout',
+    method: 'post',
+  });
 }
 
-export function getUser(){
+export function getCurrentUser() {
   return AxiosUtil({
-      url:"/singleAuth/getUser",
-      method:"get"
-    }
-  )
-}
-export function getMenuTree(params:any){
-  return AxiosUtil({
-      url:"/singleSystem/getMenuTree",
-      params,
-      method:"get"
-    }
-  )
+    url: '/api/platform/auth/profile',
+    method: 'get',
+  });
 }
 
-export function logout(){
+export function getUserList() {
   return AxiosUtil({
-      url:"/singleAuth/logout",
-      method:"post"
-    }
-  )
+    url: '/api/platform/users',
+    method: 'get',
+  });
 }
-export function getLginOperationLog(data:any){
+
+export function createCategory(data: {
+  name: string;
+  description?: string;
+  coverUrl?: string;
+  status?: string;
+}) {
   return AxiosUtil({
-      url:"/singleSystem/getLginOperationLog",
-      method:"post",
-      data
-    }
-  )
+    url: '/api/platform/categories',
+    method: 'post',
+    data,
+  });
 }
-export function getMenuList(data:any){
+
+export function getUserCategories(userId: string) {
   return AxiosUtil({
-      url:"/singleSystem/getMenuList",
-      method:"post",
-      data
-    }
-  )
+    url: `/api/platform/users/${userId}/categories`,
+    method: 'get',
+  });
 }
-export function changePassword(data:any){
-    return AxiosUtil({
-            url:"/singleAuth/changePassword",
-            method:"post",
-            data
-        }
-    )
+
+export function getCategoryDetail(id: string) {
+  return AxiosUtil({
+    url: `/api/platform/categories/${id}`,
+    method: 'get',
+  });
+}
+
+export function uploadCategoryResource(id: string, formData: FormData) {
+  return AxiosUtil({
+    url: `/api/platform/categories/${id}/resources`,
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+}
+
+export function createShareLink(data: {
+  categoryId: string;
+  title?: string;
+  description?: string;
+  expiresAt?: string;
+}) {
+  return AxiosUtil({
+    url: '/api/platform/share-links',
+    method: 'post',
+    data,
+  });
 }
