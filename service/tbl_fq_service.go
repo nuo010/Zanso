@@ -2,10 +2,10 @@ package service
 
 import (
 	"log"
-	"singo/db"
-	"singo/model"
-	"singo/result"
 	"time"
+	"zanso/db"
+	"zanso/model"
+	"zanso/result"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"

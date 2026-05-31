@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"singo/db"
-	"singo/model"
-	"singo/result"
-	"singo/util"
 	"strings"
 	"time"
+	"zanso/db"
+	"zanso/model"
+	"zanso/result"
+	"zanso/util"
 )
 
 func GetTblFileList(c *gin.Context) {

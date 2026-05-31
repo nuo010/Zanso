@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"singo/util"
+	"zanso/util"
 
 	"github.com/gin-gonic/gin"
 )

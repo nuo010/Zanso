@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"singo/db"
 	"strings"
 	"time"
+	"zanso/db"
 )
 
 func GetFilebeat() {
@@ -48,7 +48,7 @@ func GetFilebeat() {
 
 		// 消费数据
 		for _, item := range data {
-			if strings.Contains(item, "single") {
+			if strings.Contains(item, "zanso") {
 				var result map[string]interface{}
 				err := json.Unmarshal([]byte(item), &result)
 				if err != nil {

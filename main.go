@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"singo/router"
-	"singo/sysConfig"
-	"singo/util"
+	"zanso/router"
+	"zanso/sysConfig"
+	"zanso/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	//"singo/service"
+	//"zanso/service"
 	_ "time/tzdata"
 )
 

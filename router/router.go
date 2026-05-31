@@ -1,8 +1,8 @@
 package router
 
 import (
-	"singo/handler"
-	"singo/service"
+	"zanso/handler"
+	"zanso/service"
 
 	"github.com/gin-gonic/gin"
 )

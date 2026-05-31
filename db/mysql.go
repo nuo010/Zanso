@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/viper"
 	"log"
 	"os"
-	"singo/util"
 	"time"
+	"zanso/util"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

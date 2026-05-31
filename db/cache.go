@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
-	"singo/util"
+	"zanso/util"
 )
 
 // RedisClient Redis缓存客户端单例
@@ -22,7 +22,7 @@ func Redis() {
 	_, err := client.Ping(context.Background()).Result()
 
 	if err != nil {
-		util.Log().Panic("连接Redis不成功", err)
+		util.Log().Panic("连接 Redis 不成功: %v", err)
 	}
 
 	RedisClient = client

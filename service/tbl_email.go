@@ -2,9 +2,9 @@ package service
 
 import (
 	"github.com/gin-gonic/gin"
-	"singo/db"
-	"singo/model"
-	"singo/result"
+	"zanso/db"
+	"zanso/model"
+	"zanso/result"
 )
 
 func GetEmail(c *gin.Context) {

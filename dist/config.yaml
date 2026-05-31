@@ -1,11 +1,11 @@
-project_name: singo
+project_name: zanso
 release:
   github:
     owner: ak47-b
-    name: singo
+    name: zanso
   name_template: '{{.Tag}}'
 builds:
-  - id: singo
+  - id: zanso
     goos:
       - darwin
       - linux
@@ -39,7 +39,7 @@ builds:
       - windows_386_sse2
     dir: .
     main: .
-    binary: single
+    binary: zanso
     builder: go
     tool: go
     command: build

@@ -2,8 +2,8 @@ package sysConfig
 
 import (
 	"fmt"
-	"singo/db"
-	"singo/util"
+	"zanso/db"
+	"zanso/util"
 
 	"github.com/spf13/viper"
 )

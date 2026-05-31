@@ -2,10 +2,10 @@ package service
 
 import (
 	"github.com/gin-gonic/gin"
-	"singo/db"
-	"singo/model"
-	"singo/result"
-	"singo/util"
+	"zanso/db"
+	"zanso/model"
+	"zanso/result"
+	"zanso/util"
 )
 
 func GetTask(c *gin.Context) {
