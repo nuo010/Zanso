@@ -21,13 +21,19 @@
       </div>
 
       <el-table :data="shareLinks" v-loading="loading" class="share-table">
-        <el-table-column prop="title" label="分享标题" min-width="200" />
-        <el-table-column label="分享对象" min-width="220">
+        <el-table-column label="二级标题" min-width="240">
           <template #default="{ row }">
-            <div class="share-target">
-              <strong>{{ row.categoryName }}</strong>
-              <span>{{ row.targetType === 'item' ? row.categoryItemName || '分类项分享' : '分类分享' }}</span>
+            <div class="share-title-block">
+              <strong>{{ row.title }}</strong>
+              <span>{{ row.targetType === 'item' ? row.categoryItemName || row.categoryName : row.categoryName }}</span>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="分享类型" width="140">
+          <template #default="{ row }">
+            <span class="share-type-tag">
+              {{ row.targetType === 'item' ? '分类项分享' : '分类分享' }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="shareCode" label="分享码" width="140" />
@@ -147,14 +153,26 @@ async function confirmDelete(id: string) {
   width: 220px;
 }
 
-.share-target strong {
+.share-title-block strong {
   display: block;
   color: #17315f;
 }
 
-.share-target span {
+.share-title-block span {
   color: #6d82a7;
   font-size: 12px;
+  margin-top: 4px;
+}
+
+.share-type-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.08);
+  color: #2f6bff;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .share-url {

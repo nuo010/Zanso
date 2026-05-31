@@ -905,6 +905,9 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 		db.DB.Where("category_id = ? AND visible = ?", shareLink.CategoryID, true).Order("created_at asc").Find(&itemList)
 		db.DB.Where("category_id = ?", shareLink.CategoryID).Order("sort asc, created_at asc").Find(&resourceList)
 	}
+
+	shareLink.Title = currentShareTitle(shareLink, category, item)
+	shareLink.Description = currentShareDescription(shareLink, category, item)
 	db.DB.Model(&model.ShareLink{}).Where("id = ?", shareLink.ID).UpdateColumn("view_count", gorm.Expr("view_count + 1"))
 	_ = db.DB.Create(&model.ShareViewLog{
 		ID:             util.GetUuid(),
@@ -1011,6 +1014,26 @@ func shareDescription(req model.CreateShareLinkRequest, category model.Category,
 		return strings.TrimSpace(item.Description)
 	}
 	return strings.TrimSpace(category.Description)
+}
+
+func currentShareTitle(shareLink model.ShareLink, category model.Category, item *model.CategoryItem) string {
+	if shareLink.TargetType == model.ShareTargetItem && item != nil && strings.TrimSpace(item.Name) != "" {
+		return strings.TrimSpace(item.Name)
+	}
+	if strings.TrimSpace(category.Name) != "" {
+		return strings.TrimSpace(category.Name)
+	}
+	return strings.TrimSpace(shareLink.Title)
+}
+
+func currentShareDescription(shareLink model.ShareLink, category model.Category, item *model.CategoryItem) string {
+	if shareLink.TargetType == model.ShareTargetItem && item != nil && strings.TrimSpace(item.Description) != "" {
+		return strings.TrimSpace(item.Description)
+	}
+	if strings.TrimSpace(category.Description) != "" {
+		return strings.TrimSpace(category.Description)
+	}
+	return strings.TrimSpace(shareLink.Description)
 }
 
 func fallbackString(value string, fallback string) string {

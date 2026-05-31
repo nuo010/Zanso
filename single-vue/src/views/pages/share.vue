@@ -31,6 +31,7 @@
           <h2>分类项筛选</h2>
           <el-segmented v-model="selectedFilter" :options="filterOptions" />
         </div>
+        <p v-if="selectedItemDescription" class="filter-description">{{ selectedItemDescription }}</p>
       </section>
 
       <section class="section">
@@ -63,9 +64,20 @@ const detail = ref<any>(null);
 const selectedFilter = ref('all');
 
 const isCategoryShare = computed(() => detail.value?.shareLink?.targetType === 'category');
+const selectedCategoryItem = computed(() => {
+  if (!detail.value?.categoryItems?.length || selectedFilter.value === 'all') return null;
+  return detail.value.categoryItems.find((item: any) => item.id === selectedFilter.value) || null;
+});
 const descriptionText = computed(() => {
   if (!detail.value) return '';
-  return detail.value.shareLink.description || detail.value.categoryItem?.description || detail.value.category.description || '暂无描述';
+  if (isCategoryShare.value) {
+    return detail.value.category.description || detail.value.shareLink.description || '暂无描述';
+  }
+  return detail.value.categoryItem?.description || detail.value.category.description || detail.value.shareLink.description || '暂无描述';
+});
+const selectedItemDescription = computed(() => {
+  if (!selectedCategoryItem.value) return '';
+  return selectedCategoryItem.value.description || '';
 });
 
 const filterOptions = computed(() => {
@@ -157,25 +169,25 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  padding: 18px 20px;
+  padding: 14px 20px;
   background: #f8fbff;
 }
 
 .meta-item {
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: #eef5ff;
 }
 
 .meta-item span {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   color: #6d82a7;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .meta-item strong {
-  font-size: 14px;
+  font-size: 13px;
   color: #17315f;
   word-break: break-all;
 }
@@ -196,6 +208,16 @@ onMounted(async () => {
   margin: 0 0 14px;
   font-size: 18px;
   color: #17315f;
+}
+
+.filter-description {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f4f8ff;
+  color: #5f76a0;
+  line-height: 1.7;
+  font-size: 13px;
 }
 
 .media-grid {
@@ -250,7 +272,7 @@ onMounted(async () => {
 
   .meta-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    padding: 20px 28px;
+    padding: 16px 28px;
   }
 }
 </style>
