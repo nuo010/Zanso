@@ -3,7 +3,7 @@ server:
   port: 8888
 
 mysql:
-  host: db.cfsingle.fun
+  host: db.cle.fun
   port: 3306
   username: dbdata
   password: dbdata@12we34
@@ -14,11 +14,3 @@ redis:
   password: redisPwd@123!
   port: 6379
   database: 0
-
-
-#minio:
-#  # endpoint: 172.26.15.17
-#  endpoint: 121.43.149.217
-#  port: 9000
-#  accessKey: admin
-#  secretKey: suyan123
