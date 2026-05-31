@@ -34,6 +34,9 @@ export const userMainStore = defineStore('main', {
   state: () => ({
     user: {} as PlatformUser,
     categories: [] as CategoryItem[],
+    categoryTotal: 0,
+    categoryPage: 1,
+    categoryPageSize: 20,
     asideWidth: globalMenuAsideWidthBig,
   }),
   getters: {
@@ -46,10 +49,13 @@ export const userMainStore = defineStore('main', {
       this.user = res.data;
       return res.data;
     },
-    async loadCategories() {
+    async loadCategories(page = 1, pageSize = 20) {
       if (!this.user.id) return [];
-      const res = await getUserCategories(this.user.id);
-      this.categories = res.data || [];
+      const res = await getUserCategories(this.user.id, { page, pageSize });
+      this.categories = res.data?.list || [];
+      this.categoryTotal = res.data?.total || 0;
+      this.categoryPage = res.data?.page || page;
+      this.categoryPageSize = res.data?.pageSize || pageSize;
       return this.categories;
     },
     setUserStore(user: PlatformUser) {

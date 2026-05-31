@@ -11,10 +11,10 @@
       </template>
 
       <div class="filter-bar">
-        <el-select v-model="filters.categoryId" clearable placeholder="按分类筛选" @change="handleCategoryChange">
+        <el-select v-model="filters.categoryId" clearable placeholder="分类" class="filter-select" @change="handleCategoryChange">
           <el-option v-for="item in store.categories" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
-        <el-select v-model="filters.categoryItemId" clearable placeholder="按分类项筛选">
+        <el-select v-model="filters.categoryItemId" clearable placeholder="分类项" class="filter-select">
           <el-option v-for="item in categoryItemOptions" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
         <el-button type="primary" @click="loadShareLinks">查询</el-button>
@@ -42,6 +42,11 @@
             <a :href="row.shareUrl" target="_blank" class="share-url">{{ row.shareUrl }}</a>
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="110" align="right">
+          <template #default="{ row }">
+            <el-button link type="danger" @click="confirmDelete(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -49,8 +54,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { getCategoryDetail, getShareLinkList } from '@/api/user';
+import { ElMessageBox } from 'element-plus';
+import { deleteShareLink, getCategoryDetail, getShareLinkList } from '@/api/user';
 import { userMainStore } from '@/store';
+import { toast } from '@/util/util';
 
 const store = userMainStore();
 const loading = ref(false);
@@ -93,6 +100,17 @@ async function loadShareLinks() {
     loading.value = false;
   }
 }
+
+async function confirmDelete(id: string) {
+  await ElMessageBox.confirm('删除后该分享链接将无法继续访问，确认继续？', '二次确认', {
+    type: 'warning',
+    confirmButtonText: '确认',
+    cancelButtonText: '取消',
+  });
+  await deleteShareLink(id);
+  toast('分享链接已删除', 'success');
+  await loadShareLinks();
+}
 </script>
 
 <style scoped lang="scss">
@@ -122,6 +140,11 @@ async function loadShareLinks() {
   gap: 12px;
   margin-bottom: 18px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-select {
+  width: 220px;
 }
 
 .share-target strong {

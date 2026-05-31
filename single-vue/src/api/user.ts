@@ -66,17 +66,19 @@ export function deleteCategory(id: string) {
   });
 }
 
-export function getUserCategories(userId: string) {
+export function getUserCategories(userId: string, params?: { page?: number; pageSize?: number }) {
   return AxiosUtil({
     url: `/api/platform/users/${userId}/categories`,
     method: 'get',
+    params,
   });
 }
 
-export function getCategoryDetail(id: string) {
+export function getCategoryDetail(id: string, params?: { page?: number; pageSize?: number }) {
   return AxiosUtil({
     url: `/api/platform/categories/${id}`,
     method: 'get',
+    params,
   });
 }
 
@@ -187,5 +189,12 @@ export function getShareLinkList(params?: { categoryId?: string; categoryItemId?
     url: '/api/platform/share-links',
     method: 'get',
     params,
+  });
+}
+
+export function deleteShareLink(id: string) {
+  return AxiosUtil({
+    url: `/api/platform/share-links/${id}/delete`,
+    method: 'post',
   });
 }

@@ -73,17 +73,17 @@
                   </el-table-column>
                   <el-table-column prop="name" min-width="220" />
                   <el-table-column prop="description" min-width="240" />
-                  <el-table-column width="120">
+                  <el-table-column label="展示" width="120" align="center">
                     <template #default="{ row: itemRow }">
                       <el-switch
                         :model-value="itemRow.visible"
+                        inline-prompt
                         active-text="可看"
-                        inactive-text="不可看"
+                        inactive-text="隐藏"
                         @change="handleToggleCategoryItemVisible(itemRow, $event)"
                       />
                     </template>
                   </el-table-column>
-                  <el-table-column prop="status" width="110" />
                   <el-table-column width="360" align="right">
                     <template #default="{ row: itemRow }">
                       <div class="row-actions">
@@ -99,6 +99,17 @@
                     </template>
                   </el-table-column>
                 </el-table>
+                <div v-if="expandedDetailMap[row.id].itemTotal > pageSize" class="inner-pagination">
+                  <el-pagination
+                    small
+                    background
+                    layout="total, prev, pager, next"
+                    :page-size="pageSize"
+                    :total="expandedDetailMap[row.id].itemTotal"
+                    :current-page="expandedDetailMap[row.id].itemPage || 1"
+                    @current-change="handleCategoryItemPageChange(row.id, $event)"
+                  />
+                </div>
                 <el-empty v-else description="当前分类下还没有分类项" />
               </template>
             </div>
@@ -107,27 +118,39 @@
 
         <el-table-column prop="name" label="分类名称" min-width="220" />
         <el-table-column prop="description" label="描述" min-width="260" />
-        <el-table-column width="140">
+        <el-table-column label="展示" width="140" align="center">
           <template #default="{ row }">
             <el-switch
               :model-value="row.visible"
+              inline-prompt
               active-text="可看"
-              inactive-text="不可看"
+              inactive-text="隐藏"
               @change="handleToggleCategoryVisible(row, $event)"
             />
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="110" />
         <el-table-column label="操作" width="340" align="right">
           <template #default="{ row }">
             <div class="row-actions">
               <el-button link type="primary" @click="openCreateItemDialog(row)">新建分类项</el-button>
+              <el-button link type="primary" @click="openEditCategoryDialog(row)">修改描述</el-button>
               <el-button link type="warning" @click="openShareDialog('category', row.id, '', row.name, row.description)">分享分类</el-button>
               <el-button link type="danger" @click="confirmDeleteCategory(row.id)">删除</el-button>
             </div>
           </template>
         </el-table-column>
       </el-table>
+
+      <div v-if="store.categoryTotal > pageSize" class="table-pagination">
+        <el-pagination
+          background
+          layout="total, prev, pager, next"
+          :page-size="pageSize"
+          :total="store.categoryTotal"
+          :current-page="store.categoryPage"
+          @current-change="handleCategoryPageChange"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="createCategoryDialogVisible" title="新建分类" width="460px">
@@ -145,6 +168,21 @@
       <template #footer>
         <el-button @click="createCategoryDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submittingCategory" @click="handleCreateCategory">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="editCategoryDialogVisible" title="修改分类描述" width="460px">
+      <el-form :model="editCategoryForm" label-position="top">
+        <el-form-item label="分类名称">
+          <el-input :model-value="editCategoryForm.name" disabled />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="editCategoryForm.description" type="textarea" :rows="4" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editCategoryDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submittingCategory" @click="handleUpdateCategoryDescription">保存</el-button>
       </template>
     </el-dialog>
 
@@ -237,10 +275,12 @@ const submittingCategoryItem = ref(false);
 const submittingShare = ref(false);
 const uploading = ref(false);
 const createCategoryDialogVisible = ref(false);
+const editCategoryDialogVisible = ref(false);
 const categoryItemDialogVisible = ref(false);
 const shareDialogVisible = ref(false);
 const uploadDialogVisible = ref(false);
 const categoryItemDialogMode = ref<'create' | 'edit'>('create');
+const pageSize = 20;
 
 const expandedDetailMap = reactive<Record<string, any>>({});
 const expandedLoadingMap = reactive<Record<string, boolean>>({});
@@ -251,6 +291,14 @@ const categoryForm = reactive({
   name: '',
   description: '',
   visible: true,
+});
+
+const editCategoryForm = reactive({
+  id: '',
+  name: '',
+  description: '',
+  visible: true,
+  status: 'active',
 });
 
 const categoryItemForm = reactive({
@@ -280,7 +328,7 @@ const categoryItemParentName = ref('');
 async function refreshList() {
   loading.value = true;
   try {
-    await store.loadCategories();
+    await store.loadCategories(store.categoryPage || 1, pageSize);
   } finally {
     loading.value = false;
   }
@@ -293,6 +341,15 @@ function openCreateCategoryDialog() {
   categoryForm.description = '';
   categoryForm.visible = true;
   createCategoryDialogVisible.value = true;
+}
+
+function openEditCategoryDialog(category: any) {
+  editCategoryForm.id = category.id;
+  editCategoryForm.name = category.name;
+  editCategoryForm.description = category.description || '';
+  editCategoryForm.visible = category.visible !== false;
+  editCategoryForm.status = category.status || 'active';
+  editCategoryDialogVisible.value = true;
 }
 
 function openCreateItemDialog(category: any) {
@@ -362,6 +419,7 @@ async function handleCreateCategory() {
     });
     toast('分类创建成功', 'success');
     createCategoryDialogVisible.value = false;
+    store.categoryPage = 1;
     await refreshList();
   } finally {
     submittingCategory.value = false;
@@ -403,9 +461,31 @@ async function handleSubmitCategoryItem() {
       toast('分类项创建成功', 'success');
     }
     categoryItemDialogVisible.value = false;
-    await loadCategoryDetail(categoryItemForm.categoryId);
+    await loadCategoryDetail(categoryItemForm.categoryId, expandedDetailMap[categoryItemForm.categoryId]?.itemPage || 1);
   } finally {
     submittingCategoryItem.value = false;
+  }
+}
+
+async function handleUpdateCategoryDescription() {
+  if (!editCategoryForm.id) return;
+  submittingCategory.value = true;
+  try {
+    await updateCategory(editCategoryForm.id, {
+      name: editCategoryForm.name,
+      description: editCategoryForm.description.trim(),
+      visible: editCategoryForm.visible,
+      status: editCategoryForm.status,
+    });
+    toast('分类描述修改成功', 'success');
+    editCategoryDialogVisible.value = false;
+    const target = store.categories.find((item: any) => item.id === editCategoryForm.id);
+    if (target) {
+      target.description = editCategoryForm.description.trim();
+    }
+    await loadCategoryDetail(editCategoryForm.id, expandedDetailMap[editCategoryForm.id]?.itemPage || 1);
+  } finally {
+    submittingCategory.value = false;
   }
 }
 
@@ -427,10 +507,10 @@ async function handleSubmitShare() {
   }
 }
 
-async function loadCategoryDetail(id: string) {
+async function loadCategoryDetail(id: string, page = 1) {
   expandedLoadingMap[id] = true;
   try {
-    const res = await getCategoryDetail(id);
+    const res = await getCategoryDetail(id, { page, pageSize });
     expandedDetailMap[id] = res.data;
   } finally {
     expandedLoadingMap[id] = false;
@@ -449,7 +529,7 @@ async function loadCategoryItemDetail(id: string) {
 
 function handleCategoryExpand(row: any, expandedRows: any[]) {
   if (expandedRows.some((item) => item.id === row.id)) {
-    loadCategoryDetail(row.id);
+    loadCategoryDetail(row.id, expandedDetailMap[row.id]?.itemPage || 1);
   }
 }
 
@@ -467,6 +547,10 @@ async function handleToggleCategoryVisible(row: any, value: boolean) {
     status: row.status,
   });
   row.visible = value;
+  const target = store.categories.find((item: any) => item.id === row.id);
+  if (target) {
+    target.visible = value;
+  }
   toast(`分类已切换为${value ? '可看' : '不可看'}`, 'success');
 }
 
@@ -511,7 +595,7 @@ async function submitUpload() {
     await uploadCategoryResource(uploadTargetCategoryId.value, formData);
     toast('资源上传成功', 'success');
     uploadDialogVisible.value = false;
-    await loadCategoryDetail(uploadTargetCategoryId.value);
+    await loadCategoryDetail(uploadTargetCategoryId.value, expandedDetailMap[uploadTargetCategoryId.value]?.itemPage || 1);
     await loadCategoryItemDetail(uploadTargetItemId.value);
   } finally {
     uploading.value = false;
@@ -523,6 +607,9 @@ async function confirmDeleteCategory(categoryId: string) {
   await deleteCategory(categoryId);
   toast('分类已删除', 'success');
   delete expandedDetailMap[categoryId];
+  if (store.categories.length === 1 && store.categoryPage > 1) {
+    store.categoryPage -= 1;
+  }
   await refreshList();
 }
 
@@ -531,14 +618,15 @@ async function confirmDeleteCategoryItem(itemId: string, categoryId: string) {
   await deleteCategoryItem(itemId);
   toast('分类项已删除', 'success');
   delete expandedItemDetailMap[itemId];
-  await loadCategoryDetail(categoryId);
+  const currentPage = expandedDetailMap[categoryId]?.itemPage || 1;
+  await loadCategoryDetail(categoryId, currentPage);
 }
 
 async function confirmDeleteResource(resourceId: string, categoryId: string, itemId: string) {
   await confirmAction('删除资源后不可恢复，确认继续？');
   await deleteResource(resourceId);
   toast('资源已删除', 'success');
-  await loadCategoryDetail(categoryId);
+  await loadCategoryDetail(categoryId, expandedDetailMap[categoryId]?.itemPage || 1);
   await loadCategoryItemDetail(itemId);
 }
 
@@ -548,6 +636,15 @@ async function confirmAction(message: string) {
     confirmButtonText: '确认',
     cancelButtonText: '取消',
   });
+}
+
+function handleCategoryPageChange(page: number) {
+  store.categoryPage = page;
+  refreshList();
+}
+
+function handleCategoryItemPageChange(categoryId: string, page: number) {
+  loadCategoryDetail(categoryId, page);
 }
 </script>
 
@@ -680,5 +777,12 @@ async function confirmAction(message: string) {
   justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.table-pagination,
+.inner-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>

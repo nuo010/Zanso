@@ -222,8 +222,18 @@ type CategoryDetail struct {
 	Category      Category                   `json:"category"`
 	User          User                       `json:"user"`
 	CategoryItems []CategoryItem             `json:"categoryItems"`
+	ItemTotal     int64                      `json:"itemTotal"`
+	ItemPage      int                        `json:"itemPage"`
+	ItemPageSize  int                        `json:"itemPageSize"`
 	ResourceList  []CategoryResourceRelation `json:"resourceList"`
 	ShareLinks    []ShareLink                `json:"shareLinks,omitempty"`
+}
+
+type PageResult struct {
+	List     interface{} `json:"list"`
+	Total    int64       `json:"total"`
+	Page     int         `json:"page"`
+	PageSize int         `json:"pageSize"`
 }
 
 type ShareLinkListItem struct {

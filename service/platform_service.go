@@ -409,12 +409,24 @@ func GetUserCategoryList(c *gin.Context) {
 		return
 	}
 
+	page, pageSize := parsePageParams(c)
 	var categoryList []model.Category
-	if err := db.DB.Where("user_id = ?", userID).Order("created_at desc").Find(&categoryList).Error; err != nil {
+	query := db.DB.Model(&model.Category{}).Where("user_id = ?", userID)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
 		result.ErrSetMsg(c, "查询分类失败")
 		return
 	}
-	result.OkSetData(c, categoryList)
+	if err := query.Order("created_at desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&categoryList).Error; err != nil {
+		result.ErrSetMsg(c, "查询分类失败")
+		return
+	}
+	result.OkSetData(c, model.PageResult{
+		List:     categoryList,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	})
 }
 
 func GetCategoryDetail(c *gin.Context) {
@@ -435,12 +447,19 @@ func GetCategoryDetail(c *gin.Context) {
 		return
 	}
 
+	page, pageSize := parsePageParams(c)
 	var user model.User
 	var itemList []model.CategoryItem
 	var resourceList []model.CategoryResourceRelation
 	var shareLinks []model.ShareLink
 	db.DB.Where("id = ?", category.UserID).Take(&user)
-	db.DB.Where("category_id = ?", categoryID).Order("created_at desc").Find(&itemList)
+	itemQuery := db.DB.Model(&model.CategoryItem{}).Where("category_id = ?", categoryID)
+	var itemTotal int64
+	if err := itemQuery.Count(&itemTotal).Error; err != nil {
+		result.ErrSetMsg(c, "查询分类详情失败")
+		return
+	}
+	itemQuery.Order("created_at desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&itemList)
 	db.DB.Where("category_id = ? AND (category_item_id = '' OR category_item_id IS NULL)", categoryID).Order("sort asc, created_at asc").Find(&resourceList)
 	db.DB.Where("category_id = ?", categoryID).Order("created_at desc").Find(&shareLinks)
 
@@ -448,6 +467,9 @@ func GetCategoryDetail(c *gin.Context) {
 		Category:      category,
 		User:          user,
 		CategoryItems: itemList,
+		ItemTotal:     itemTotal,
+		ItemPage:      page,
+		ItemPageSize:  pageSize,
 		ResourceList:  resourceList,
 		ShareLinks:    shareLinks,
 	})
@@ -793,6 +815,37 @@ func GetShareLinkList(c *gin.Context) {
 	result.OkSetData(c, list)
 }
 
+func DeleteShareLink(c *gin.Context) {
+	shareLinkID := strings.TrimSpace(c.Param("id"))
+	if shareLinkID == "" {
+		result.ErrSetMsg(c, "分享链接 ID 不能为空")
+		return
+	}
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+
+	var shareLink model.ShareLink
+	if err := db.DB.Where("id = ? AND user_id = ?", shareLinkID, currentUserID).Take(&shareLink).Error; err != nil {
+		result.ErrSetMsg(c, "分享链接不存在")
+		return
+	}
+
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("share_link_id = ?", shareLinkID).Delete(&model.ShareViewLog{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id = ?", shareLinkID).Delete(&model.ShareLink{}).Error
+	}); err != nil {
+		result.ErrSetMsg(c, "删除分享链接失败")
+		return
+	}
+
+	result.OkSetData(c, gin.H{"id": shareLinkID})
+}
+
 func GetShareLinkDetail(c *gin.Context) {
 	shareView, ok := loadShareView(c)
 	if !ok {
@@ -1018,4 +1071,19 @@ func removeLocalFiles(paths []string) {
 			_ = os.Remove(fullPath)
 		}
 	}
+}
+
+func parsePageParams(c *gin.Context) (int, int) {
+	page, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("page", "1")))
+	pageSize, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("pageSize", "20")))
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	return page, pageSize
 }

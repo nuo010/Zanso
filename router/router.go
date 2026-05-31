@@ -45,6 +45,7 @@ func NewRouter() *gin.Engine {
 		platformAuth.POST("/resources/:id/delete", service.DeleteResource)
 		platformAuth.POST("/share-links", service.CreateShareLink)
 		platformAuth.GET("/share-links", service.GetShareLinkList)
+		platformAuth.POST("/share-links/:id/delete", service.DeleteShareLink)
 		platform.GET("/share-links/:code", service.GetShareLinkDetail)
 	}
 
