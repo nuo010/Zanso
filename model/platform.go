@@ -4,6 +4,7 @@ import "time"
 
 const (
 	UserStatusActive         = "active"
+	RoleCodeAdmin            = "admin"
 	RoleCodeUser             = "user"
 	CategoryStatusDraft      = "draft"
 	CategoryStatusActive     = "active"
@@ -178,6 +179,10 @@ type UserLoginRequest struct {
 	Password  string `json:"password"`
 }
 
+type UpdateUserRoleRequest struct {
+	RoleCode string `json:"roleCode"`
+}
+
 type CreateCategoryRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -234,6 +239,19 @@ type PageResult struct {
 	Total    int64       `json:"total"`
 	Page     int         `json:"page"`
 	PageSize int         `json:"pageSize"`
+}
+
+type UserWithRoles struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	LoginName    string    `json:"loginName"`
+	ContactName  string    `json:"contactName"`
+	ContactPhone string    `json:"contactPhone"`
+	Status       string    `json:"status"`
+	RoleCodes    []string  `json:"roleCodes"`
+	RoleNames    []string  `json:"roleNames"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 type ShareLinkListItem struct {

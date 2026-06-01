@@ -28,6 +28,10 @@
           <strong>{{ store.user.contactPhone || '--' }}</strong>
         </div>
         <div class="profile-item">
+          <span>角色</span>
+          <strong>{{ store.user.roleNames?.join('、') || '--' }}</strong>
+        </div>
+        <div class="profile-item">
           <span>用户 ID</span>
           <strong>{{ store.user.id || '--' }}</strong>
         </div>

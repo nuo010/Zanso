@@ -44,19 +44,19 @@
         </el-table-column>
         <el-table-column prop="shareCode" label="分享码" width="140" />
         <el-table-column prop="viewCount" label="访问量" width="100" />
-        <el-table-column label="到期时间" min-width="180">
+        <el-table-column label="到期时间" width="150">
           <template #default="{ row }">
             {{ row.expiresAt || '长期有效' }}
           </template>
         </el-table-column>
-        <el-table-column label="链接" min-width="280">
+        <el-table-column label="链接" min-width="260" show-overflow-tooltip>
           <template #default="{ row }">
             <a :href="row.shareUrl" target="_blank" class="share-url">{{ row.shareUrl }}</a>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="110" align="right">
+        <el-table-column label="操作" width="96" align="center" header-align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="danger" @click="confirmDelete(row.id)">删除</el-button>
+            <el-button link type="danger" class="delete-link" @click="confirmDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -181,8 +181,28 @@ async function confirmDelete(id: string) {
   font-weight: 600;
 }
 
+.share-table {
+  width: 100%;
+}
+
+.share-table :deep(.el-table__cell) {
+  padding: 12px 0;
+}
+
+.share-table :deep(.el-table-fixed-column--right) {
+  background: #fff;
+}
+
 .share-url {
+  display: block;
   color: #2f6bff;
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-link {
+  padding: 0;
+  font-weight: 600;
 }
 </style>

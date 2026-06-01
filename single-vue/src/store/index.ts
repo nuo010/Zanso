@@ -9,6 +9,8 @@ export interface PlatformUser {
   contactName?: string;
   contactPhone?: string;
   status?: string;
+  roleCodes?: string[];
+  roleNames?: string[];
 }
 
 export interface CategoryItem {
@@ -42,6 +44,7 @@ export const userMainStore = defineStore('main', {
   getters: {
     getUserId: (state) => state.user.id || '',
     isCollapse: (state) => state.asideWidth !== globalMenuAsideWidthBig,
+    isAdmin: (state) => state.user.roleCodes?.includes('admin') || false,
   },
   actions: {
     async loadProfile() {

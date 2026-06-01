@@ -19,6 +19,10 @@
         <el-icon><Link /></el-icon>
         <span>分享链接管理</span>
       </el-menu-item>
+      <el-menu-item v-if="store.isAdmin" index="/users">
+        <el-icon><UserFilled /></el-icon>
+        <span>用户管理</span>
+      </el-menu-item>
       <el-menu-item index="/user">
         <el-icon><User /></el-icon>
         <span>个人中心</span>

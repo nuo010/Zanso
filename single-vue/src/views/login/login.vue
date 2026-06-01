@@ -9,12 +9,12 @@
     <el-card class="login-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <h2>账号登录</h2>
-          <span>使用已创建的用户账号进入后台</span>
+          <h2>{{ authMode === 'login' ? '账号登录' : '注册账号' }}</h2>
+          <span>{{ authMode === 'login' ? '使用已创建的用户账号进入后台' : '创建普通用户账号，注册后即可登录' }}</span>
         </div>
       </template>
 
-      <el-form :model="form" label-position="top" @submit.prevent="handleLogin">
+      <el-form v-if="authMode === 'login'" :model="form" label-position="top" @submit.prevent="handleLogin">
         <el-form-item label="登录账号">
           <el-input v-model="form.loginName" placeholder="请输入 loginName" />
         </el-form-item>
@@ -26,8 +26,32 @@
         </el-button>
       </el-form>
 
+      <el-form v-else :model="registerForm" label-position="top" @submit.prevent="handleRegister">
+        <el-form-item label="用户名称">
+          <el-input v-model="registerForm.name" placeholder="请输入用户名称" />
+        </el-form-item>
+        <el-form-item label="登录账号">
+          <el-input v-model="registerForm.loginName" placeholder="请输入登录账号" />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="registerForm.password" type="password" show-password placeholder="请输入密码" />
+        </el-form-item>
+        <el-form-item label="联系人">
+          <el-input v-model="registerForm.contactName" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="联系电话">
+          <el-input v-model="registerForm.contactPhone" placeholder="可选" />
+        </el-form-item>
+        <el-button type="primary" class="submit-btn" :loading="submitting" @click="handleRegister">
+          注册
+        </el-button>
+      </el-form>
+
       <p class="helper-text">
-        如果还没有账号，先调用后端 `POST /api/platform/users` 创建一个用户。
+        {{ authMode === 'login' ? '还没有账号？' : '已有账号？' }}
+        <el-button link type="primary" class="mode-switch" @click="toggleAuthMode">
+          {{ authMode === 'login' ? '立即注册' : '返回登录' }}
+        </el-button>
       </p>
     </el-card>
   </div>
@@ -36,7 +60,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { loginUser, getCurrentUser } from '@/api/user';
+import { createUser, loginUser, getCurrentUser } from '@/api/user';
 import { setToken } from '@/util/auth';
 import { toast } from '@/util/util';
 import { userMainStore } from '@/store';
@@ -44,10 +68,22 @@ import { userMainStore } from '@/store';
 const router = useRouter();
 const store = userMainStore();
 const submitting = ref(false);
+const authMode = ref<'login' | 'register'>('login');
 const form = reactive({
   loginName: '',
   password: '',
 });
+const registerForm = reactive({
+  name: '',
+  loginName: '',
+  password: '',
+  contactName: '',
+  contactPhone: '',
+});
+
+function toggleAuthMode() {
+  authMode.value = authMode.value === 'login' ? 'register' : 'login';
+}
 
 async function handleLogin() {
   if (!form.loginName || !form.password) {
@@ -68,6 +104,31 @@ async function handleLogin() {
     await router.push('/dashboard');
   } catch (error) {
     console.error('登录失败:', error);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function handleRegister() {
+  if (!registerForm.name || !registerForm.loginName || !registerForm.password) {
+    toast('用户名称、登录账号和密码不能为空', 'warning');
+    return;
+  }
+  submitting.value = true;
+  try {
+    await createUser({
+      name: registerForm.name,
+      loginName: registerForm.loginName,
+      password: registerForm.password,
+      contactName: registerForm.contactName,
+      contactPhone: registerForm.contactPhone,
+    });
+    form.loginName = registerForm.loginName;
+    form.password = '';
+    authMode.value = 'login';
+    toast('注册成功，请登录', 'success');
+  } catch (error) {
+    console.error('注册失败:', error);
   } finally {
     submitting.value = false;
   }
@@ -150,6 +211,11 @@ async function handleLogin() {
   color: #7a877f;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.mode-switch {
+  padding: 0 2px;
+  vertical-align: baseline;
 }
 
 @media (max-width: 960px) {

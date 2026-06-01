@@ -45,6 +45,14 @@ export function getUserList() {
   });
 }
 
+export function updateUserRole(id: string, data: { roleCode: 'admin' | 'user' }) {
+  return AxiosUtil({
+    url: `/api/platform/users/${id}/role`,
+    method: 'post',
+    data,
+  });
+}
+
 export function createCategory(data: {
   name: string;
   description?: string;

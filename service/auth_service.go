@@ -72,7 +72,12 @@ func GetCurrentUserProfile(c *gin.Context) {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
-	result.OkSetData(c, user)
+	userWithRoles, err := buildUserWithRoles(user)
+	if err != nil {
+		result.ErrSetMsg(c, "查询用户角色失败")
+		return
+	}
+	result.OkSetData(c, userWithRoles)
 }
 
 func createUserToken(ctx context.Context, userID string) (string, error) {

@@ -38,6 +38,7 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	now := util.GetTime()
 	user := model.User{
 		ID:           util.GetUuid(),
 		Name:         strings.TrimSpace(req.Name),
@@ -46,24 +47,33 @@ func CreateUser(c *gin.Context) {
 		ContactName:  strings.TrimSpace(req.ContactName),
 		ContactPhone: strings.TrimSpace(req.ContactPhone),
 		Status:       model.UserStatusActive,
-		CreatedAt:    util.GetTime(),
-		UpdatedAt:    util.GetTime(),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
-	if err = db.DB.Create(&user).Error; err != nil {
-		result.ErrSetMsg(c, "创建用户失败")
-		return
-	}
-	var role model.Role
-	err = db.DB.Where("code = ?", model.RoleCodeUser).Take(&role).Error
-	if err == nil {
-		_ = db.DB.Create(&model.UserRole{
+	if err = db.DB.Transaction(func(tx *gorm.DB) error {
+		if errTx := tx.Create(&user).Error; errTx != nil {
+			return errTx
+		}
+		role, errTx := ensureDefaultRole(tx, model.RoleCodeUser, "普通用户")
+		if errTx != nil {
+			return errTx
+		}
+		return tx.Create(&model.UserRole{
 			ID:        util.GetUuid(),
 			UserID:    user.ID,
 			RoleID:    role.ID,
-			CreatedAt: util.GetTime(),
+			CreatedAt: now,
 		}).Error
+	}); err != nil {
+		result.ErrSetMsg(c, "创建用户失败")
+		return
 	}
-	result.OkSetData(c, user)
+	userWithRoles, err := buildUserWithRoles(user)
+	if err != nil {
+		result.OkSetData(c, user)
+		return
+	}
+	result.OkSetData(c, userWithRoles)
 }
 
 func GetUserList(c *gin.Context) {
@@ -73,12 +83,176 @@ func GetUserList(c *gin.Context) {
 		return
 	}
 
+	if !isAdminUser(currentUser.ID) {
+		result.ErrSetMsg(c, "只有管理员可以管理用户")
+		return
+	}
+
 	var userList []model.User
-	if err := db.DB.Where("id = ?", currentUser.ID).Order("created_at desc").Find(&userList).Error; err != nil {
+	if err := db.DB.Order("created_at desc").Find(&userList).Error; err != nil {
 		result.ErrSetMsg(c, "查询用户失败")
 		return
 	}
-	result.OkSetData(c, userList)
+	userRoleList, err := buildUsersWithRoles(userList)
+	if err != nil {
+		result.ErrSetMsg(c, "查询用户角色失败")
+		return
+	}
+	result.OkSetData(c, userRoleList)
+}
+
+func UpdateUserRole(c *gin.Context) {
+	currentUser, ok := util.GetCurrentUser(c)
+	if !ok {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+	if !isAdminUser(currentUser.ID) {
+		result.ErrSetMsg(c, "只有管理员可以修改用户角色")
+		return
+	}
+
+	userID := strings.TrimSpace(c.Param("id"))
+	if userID == "" {
+		result.ErrSetMsg(c, "用户 ID 不能为空")
+		return
+	}
+	if userID == currentUser.ID {
+		result.ErrSetMsg(c, "不能修改自己的角色，别把自己锁门外了")
+		return
+	}
+
+	var req model.UpdateUserRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.ErrSetMsg(c, "角色参数错误")
+		return
+	}
+	roleCode := strings.TrimSpace(req.RoleCode)
+	if roleCode != model.RoleCodeAdmin && roleCode != model.RoleCodeUser {
+		result.ErrSetMsg(c, "角色只能是 admin 或 user")
+		return
+	}
+
+	var user model.User
+	if err := db.DB.Where("id = ?", userID).Take(&user).Error; err != nil {
+		result.ErrSetMsg(c, "用户不存在")
+		return
+	}
+
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		roleName := "普通用户"
+		if roleCode == model.RoleCodeAdmin {
+			roleName = "管理员"
+		}
+		role, errTx := ensureDefaultRole(tx, roleCode, roleName)
+		if errTx != nil {
+			return errTx
+		}
+		if errTx := tx.Where("user_id = ?", userID).Delete(&model.UserRole{}).Error; errTx != nil {
+			return errTx
+		}
+		return tx.Create(&model.UserRole{
+			ID:        util.GetUuid(),
+			UserID:    userID,
+			RoleID:    role.ID,
+			CreatedAt: util.GetTime(),
+		}).Error
+	}); err != nil {
+		result.ErrSetMsg(c, "修改用户角色失败")
+		return
+	}
+
+	userWithRoles, err := buildUserWithRoles(user)
+	if err != nil {
+		result.ErrSetMsg(c, "查询用户角色失败")
+		return
+	}
+	result.OkSetData(c, userWithRoles)
+}
+
+func ensureDefaultRole(tx *gorm.DB, code string, name string) (model.Role, error) {
+	var role model.Role
+	if err := tx.Where("code = ?", code).Take(&role).Error; err == nil {
+		return role, nil
+	}
+	now := util.GetTime()
+	role = model.Role{
+		ID:          util.GetUuid(),
+		Name:        name,
+		Code:        code,
+		Description: name,
+		Status:      model.UserStatusActive,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	return role, tx.Create(&role).Error
+}
+
+func isAdminUser(userID string) bool {
+	var count int64
+	db.DB.Table("tbl_user_role AS ur").
+		Joins("JOIN tbl_role AS r ON r.id = ur.role_id").
+		Where("ur.user_id = ? AND r.code = ?", userID, model.RoleCodeAdmin).
+		Count(&count)
+	return count > 0
+}
+
+func buildUserWithRoles(user model.User) (model.UserWithRoles, error) {
+	users, err := buildUsersWithRoles([]model.User{user})
+	if err != nil {
+		return model.UserWithRoles{}, err
+	}
+	if len(users) == 0 {
+		return model.UserWithRoles{}, nil
+	}
+	return users[0], nil
+}
+
+func buildUsersWithRoles(users []model.User) ([]model.UserWithRoles, error) {
+	userIDs := make([]string, 0, len(users))
+	for _, user := range users {
+		userIDs = append(userIDs, user.ID)
+	}
+
+	type roleRow struct {
+		UserID string
+		Code   string
+		Name   string
+	}
+	var roleRows []roleRow
+	if len(userIDs) > 0 {
+		if err := db.DB.Table("tbl_user_role AS ur").
+			Select("ur.user_id, r.code, r.name").
+			Joins("JOIN tbl_role AS r ON r.id = ur.role_id").
+			Where("ur.user_id IN ?", userIDs).
+			Scan(&roleRows).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	roleCodeMap := make(map[string][]string, len(users))
+	roleNameMap := make(map[string][]string, len(users))
+	for _, row := range roleRows {
+		roleCodeMap[row.UserID] = append(roleCodeMap[row.UserID], row.Code)
+		roleNameMap[row.UserID] = append(roleNameMap[row.UserID], row.Name)
+	}
+
+	resultList := make([]model.UserWithRoles, 0, len(users))
+	for _, user := range users {
+		resultList = append(resultList, model.UserWithRoles{
+			ID:           user.ID,
+			Name:         user.Name,
+			LoginName:    user.LoginName,
+			ContactName:  user.ContactName,
+			ContactPhone: user.ContactPhone,
+			Status:       user.Status,
+			RoleCodes:    roleCodeMap[user.ID],
+			RoleNames:    roleNameMap[user.ID],
+			CreatedAt:    user.CreatedAt,
+			UpdatedAt:    user.UpdatedAt,
+		})
+	}
+	return resultList, nil
 }
 
 func CreateCategory(c *gin.Context) {
@@ -546,6 +720,7 @@ func UploadCategoryResource(c *gin.Context) {
 	sortValue, _ := strconv.Atoi(c.DefaultPostForm("sort", "0"))
 	now := util.GetTime()
 	ext := strings.ToLower(filepath.Ext(file.Filename))
+	storedFileName := util.GetUuid() + ext
 	pathID := categoryID
 	if categoryItemID != "" {
 		pathID = categoryItemID
@@ -554,7 +729,7 @@ func UploadCategoryResource(c *gin.Context) {
 		"categories",
 		now.Format("2006"),
 		now.Format("01"),
-		pathID+"_"+util.GetUuid()[:8]+ext,
+		pathID+"_"+storedFileName,
 	)
 	localDir := getUploadLocalDir()
 	fullPath := filepath.Join(localDir, relativePath)
@@ -573,7 +748,7 @@ func UploadCategoryResource(c *gin.Context) {
 		ID:           util.GetUuid(),
 		UserID:       category.UserID,
 		ResourceType: resourceType,
-		FileName:     file.Filename,
+		FileName:     storedFileName,
 		FileExt:      ext,
 		FileSize:     file.Size,
 		MimeType:     file.Header.Get("Content-Type"),
@@ -590,7 +765,7 @@ func UploadCategoryResource(c *gin.Context) {
 		CategoryItemID: categoryItemID,
 		ResourceID:     resource.ID,
 		ResourceType:   resourceType,
-		FileName:       file.Filename,
+		FileName:       storedFileName,
 		FileSize:       file.Size,
 		MimeType:       file.Header.Get("Content-Type"),
 		URL:            publicURL,

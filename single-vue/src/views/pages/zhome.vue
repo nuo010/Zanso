@@ -42,10 +42,15 @@
                               class="resource-card"
                             >
                               <div class="resource-preview">
-                                <img
+                                <el-image
                                   v-if="resource.resourceType !== 'video'"
                                   :src="resource.url"
                                   :alt="resource.fileName"
+                                  :preview-src-list="[resource.url]"
+                                  :initial-index="0"
+                                  fit="cover"
+                                  preview-teleported
+                                  hide-on-click-modal
                                   loading="lazy"
                                 />
                                 <video v-else :src="resource.url" controls playsinline preload="metadata"></video>
@@ -54,7 +59,6 @@
                                 <strong>{{ resource.fileName }}</strong>
                                 <span>{{ resource.resourceType }} · {{ resource.mimeType || '未知类型' }}</span>
                                 <div class="resource-actions">
-                                  <a :href="resource.url" target="_blank">查看原资源</a>
                                   <el-button
                                     link
                                     type="danger"
@@ -716,60 +720,60 @@ function handleCategoryItemPageChange(categoryId: string, page: number) {
 
 .resource-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(130px, 150px));
   gap: 12px;
 }
 
 .resource-card {
   overflow: hidden;
-  border-radius: 18px;
+  max-width: 150px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(116, 153, 230, 0.16);
-  box-shadow: 0 14px 32px rgba(60, 102, 190, 0.08);
+  box-shadow: 0 10px 24px rgba(60, 102, 190, 0.07);
 }
 
 .resource-preview {
   background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
 }
 
-.resource-preview img,
+.resource-preview :deep(.el-image),
 .resource-preview video {
   display: block;
   width: 100%;
-  height: 140px;
+  height: 88px;
+  cursor: zoom-in;
+}
+
+.resource-preview :deep(.el-image__inner),
+.resource-preview video {
   object-fit: cover;
 }
 
 .resource-info {
-  padding: 10px 12px 12px;
+  padding: 8px 10px 10px;
 }
 
 .resource-info strong {
   display: block;
   color: #17315f;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.5;
   word-break: break-all;
 }
 
 .resource-info span {
   display: block;
-  margin: 4px 0 8px;
+  margin: 3px 0 6px;
   color: #6d82a7;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .resource-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   align-items: center;
-}
-
-.resource-info a {
-  color: #2f6bff;
-  font-size: 12px;
-  word-break: break-all;
 }
 
 .row-actions {
