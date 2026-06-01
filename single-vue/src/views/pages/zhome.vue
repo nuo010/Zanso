@@ -114,7 +114,10 @@
                     @current-change="handleCategoryItemPageChange(row.id, $event)"
                   />
                 </div>
-                <el-empty v-else description="当前分类下还没有分类项" />
+                <el-empty
+                  v-if="!expandedDetailMap[row.id].categoryItems?.length"
+                  description="当前分类下还没有分类项"
+                />
               </template>
             </div>
           </template>
