@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/rand"
 	"fmt"
 	"mime/multipart"
 	"os"
@@ -721,16 +722,12 @@ func UploadCategoryResource(c *gin.Context) {
 	sortValue, _ := strconv.Atoi(c.DefaultPostForm("sort", "0"))
 	now := util.GetTime()
 	ext := strings.ToLower(filepath.Ext(file.Filename))
-	storedFileName := util.GetUuid() + ext
-	pathID := categoryID
-	if categoryItemID != "" {
-		pathID = categoryItemID
-	}
+	storedFileName := randomResourceFileName(10) + ext
 	relativePath := filepath.Join(
 		"categories",
 		now.Format("2006"),
 		now.Format("01"),
-		pathID+"_"+storedFileName,
+		storedFileName,
 	)
 	storagePath := strings.ReplaceAll(relativePath, "\\", "/")
 	publicURL, err := saveUploadedResource(c, file, storagePath)
@@ -1150,7 +1147,7 @@ func saveUploadedResource(c *gin.Context, file *multipart.FileHeader, storagePat
 		if err != nil {
 			return "", err
 		}
-		return db.BuildMinioObjectURL(objectName), nil
+		return db.BuildMinioStoragePath(objectName), nil
 	}
 
 	localDir := getUploadLocalDir()
@@ -1162,6 +1159,21 @@ func saveUploadedResource(c *gin.Context, file *multipart.FileHeader, storagePat
 		return "", err
 	}
 	return buildPublicAssetURL(c, storagePath), nil
+}
+
+func randomResourceFileName(length int) string {
+	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	if length <= 0 {
+		length = 10
+	}
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return util.GetUuid()[:length]
+	}
+	for index, value := range bytes {
+		bytes[index] = alphabet[int(value)%len(alphabet)]
+	}
+	return string(bytes)
 }
 
 func buildShareURL(c *gin.Context, shareCode string) string {

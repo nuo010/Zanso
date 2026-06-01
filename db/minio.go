@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 	"zanso/util"
 
@@ -27,12 +28,18 @@ func MinioInit() {
 		return
 	}
 
-	endpoint := strings.TrimSpace(viper.GetString("minio.endpoint"))
-	accessKey := strings.TrimSpace(viper.GetString("minio.access_key"))
-	secretKey := strings.TrimSpace(viper.GetString("minio.secret_key"))
+	endpoint := normalizeMinioEndpoint(strings.TrimSpace(viper.GetString("minio.endpoint")))
+	accessKey := strings.TrimSpace(viper.GetString("minio.accessKey"))
+	if accessKey == "" {
+		accessKey = strings.TrimSpace(viper.GetString("minio.access_key"))
+	}
+	secretKey := strings.TrimSpace(viper.GetString("minio.secretKey"))
+	if secretKey == "" {
+		secretKey = strings.TrimSpace(viper.GetString("minio.secret_key"))
+	}
 	bucket := strings.TrimSpace(viper.GetString("minio.bucket"))
 	if endpoint == "" || accessKey == "" || secretKey == "" || bucket == "" {
-		util.Log().Panic("MinIO 配置不完整，请检查 minio.endpoint/access_key/secret_key/bucket")
+		util.Log().Panic("MinIO 配置不完整，请检查 minio.endpoint/accessKey/secretKey/bucket")
 	}
 
 	client, err := minio.New(endpoint, &minio.Options{
@@ -84,24 +91,60 @@ func DeleteMinioObject(ctx context.Context, objectName string) error {
 	if MinioClient == nil || MinioBucket == "" {
 		return fmt.Errorf("MinIO 未初始化")
 	}
-	objectName = strings.TrimLeft(strings.ReplaceAll(objectName, "\\", "/"), "/")
+	objectName = TrimMinioBucketPrefix(objectName)
 	if objectName == "" {
 		return nil
 	}
 	return MinioClient.RemoveObject(ctx, MinioBucket, objectName, minio.RemoveObjectOptions{})
 }
 
-func BuildMinioObjectURL(objectName string) string {
+func BuildMinioStoragePath(objectName string) string {
 	objectName = strings.TrimLeft(strings.ReplaceAll(objectName, "\\", "/"), "/")
-	publicBaseURL := strings.TrimRight(strings.TrimSpace(viper.GetString("minio.public_base_url")), "/")
-	if publicBaseURL != "" {
-		return publicBaseURL + "/" + objectName
+	bucket := strings.Trim(MinioBucket, "/")
+	if bucket == "" || strings.HasPrefix(objectName, bucket+"/") {
+		return objectName
+	}
+	return bucket + "/" + objectName
+}
+
+func TrimMinioBucketPrefix(objectName string) string {
+	objectName = strings.TrimLeft(strings.ReplaceAll(objectName, "\\", "/"), "/")
+	bucket := strings.Trim(MinioBucket, "/")
+	return strings.TrimPrefix(objectName, bucket+"/")
+}
+
+func BuildMinioObjectURL(objectName string) string {
+	objectName = BuildMinioStoragePath(objectName)
+	downloadBase := strings.TrimRight(strings.TrimSpace(viper.GetString("minio.downloadBase")), "/")
+	if downloadBase == "" {
+		downloadBase = strings.TrimRight(strings.TrimSpace(viper.GetString("minio.public_base_url")), "/")
+	}
+	if downloadBase != "" {
+		return downloadBase + "/" + objectName
 	}
 
+	scheme, endpoint := minioSchemeAndEndpoint()
+	return fmt.Sprintf("%s://%s/%s/%s", scheme, endpoint, strings.Trim(MinioBucket, "/"), objectName)
+}
+
+func normalizeMinioEndpoint(endpoint string) string {
+	if endpoint == "" {
+		return ""
+	}
+	if parsed, err := url.Parse(endpoint); err == nil && parsed.Host != "" {
+		return parsed.Host
+	}
+	return strings.TrimRight(endpoint, "/")
+}
+
+func minioSchemeAndEndpoint() (string, string) {
+	rawEndpoint := strings.TrimSpace(viper.GetString("minio.endpoint"))
+	if parsed, err := url.Parse(rawEndpoint); err == nil && parsed.Host != "" {
+		return parsed.Scheme, parsed.Host
+	}
 	scheme := "http"
 	if viper.GetBool("minio.secure") {
 		scheme = "https"
 	}
-	endpoint := strings.TrimRight(strings.TrimSpace(viper.GetString("minio.endpoint")), "/")
-	return fmt.Sprintf("%s://%s/%s/%s", scheme, endpoint, strings.Trim(MinioBucket, "/"), objectName)
+	return scheme, strings.TrimRight(rawEndpoint, "/")
 }

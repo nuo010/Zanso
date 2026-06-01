@@ -44,16 +44,16 @@
                               <div class="resource-preview">
                                 <el-image
                                   v-if="resource.resourceType !== 'video'"
-                                  :src="resource.url"
+                                  :src="resource.fileUrl"
                                   :alt="resource.fileName"
-                                  :preview-src-list="[resource.url]"
+                                  :preview-src-list="[resource.fileUrl]"
                                   :initial-index="0"
                                   fit="cover"
                                   preview-teleported
                                   hide-on-click-modal
                                   loading="lazy"
                                 />
-                                <video v-else :src="resource.url" controls playsinline preload="metadata"></video>
+                                <video v-else :src="resource.fileUrl" controls playsinline preload="metadata"></video>
                               </div>
                               <div class="resource-info">
                                 <strong>{{ resource.fileName }}</strong>
@@ -273,7 +273,7 @@ import {
   uploadCategoryResource,
 } from '@/api/user';
 import { userMainStore } from '@/store';
-import { toast } from '@/util/util';
+import { resolveResourceURL, toast } from '@/util/util';
 
 const store = userMainStore();
 const loading = ref(false);
@@ -528,10 +528,20 @@ async function loadCategoryItemDetail(id: string) {
   itemLoadingMap[id] = true;
   try {
     const res = await getCategoryItemDetail(id);
-    expandedItemDetailMap[id] = res.data;
+    expandedItemDetailMap[id] = {
+      ...res.data,
+      resourceList: normalizeResourceList(res.data?.resourceList || []),
+    };
   } finally {
     itemLoadingMap[id] = false;
   }
+}
+
+function normalizeResourceList(resourceList: any[]) {
+  return resourceList.map((item) => ({
+    ...item,
+    fileUrl: resolveResourceURL(item.url || item.storagePath || ''),
+  }));
 }
 
 function handleCategoryExpand(row: any, expandedRows: any[]) {

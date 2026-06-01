@@ -25,8 +25,8 @@
         <h2>资源展示</h2>
         <div class="media-grid">
           <article v-for="item in filteredResources" :key="item.id" class="media-card">
-            <img v-if="item.resourceType !== 'video'" :src="item.url" :alt="item.fileName" loading="lazy" />
-            <video v-else :src="item.url" controls playsinline preload="metadata"></video>
+            <img v-if="item.resourceType !== 'video'" :src="item.fileUrl" :alt="item.fileName" loading="lazy" />
+            <video v-else :src="item.fileUrl" controls playsinline preload="metadata"></video>
             <div class="media-info">
               <span>{{ item.fileName }}</span>
               <span>{{ item.resourceType }}</span>
@@ -50,6 +50,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { getShareLinkDetail } from '@/api/user';
+import { resolveResourceURL } from '@/util/util';
 
 const route = useRoute();
 const loading = ref(false);
@@ -113,7 +114,10 @@ onMounted(async () => {
   loading.value = true;
   try {
     const res = await getShareLinkDetail(code);
-    detail.value = res.data;
+    detail.value = {
+      ...res.data,
+      resourceList: normalizeResourceList(res.data?.resourceList || []),
+    };
     errorMessage.value = '';
   } catch (error: any) {
     const message = error?.message || '分享链接不存在';
@@ -128,6 +132,13 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+function normalizeResourceList(resourceList: any[]) {
+  return resourceList.map((item) => ({
+    ...item,
+    fileUrl: resolveResourceURL(item.url || item.storagePath || ''),
+  }));
+}
 </script>
 
 <style scoped lang="scss">
