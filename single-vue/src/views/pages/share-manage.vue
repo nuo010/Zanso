@@ -54,6 +54,13 @@
             <a :href="row.shareUrl" target="_blank" class="share-url">{{ row.shareUrl }}</a>
           </template>
         </el-table-column>
+        <el-table-column label="二维码" width="110" align="center" header-align="center">
+          <template #default="{ row }">
+            <button class="qr-button" type="button" title="点击查看二维码" @click="openQrDialog(row)">
+              <qrcode-vue :value="row.shareUrl" :size="44" level="M" render-as="svg" />
+            </button>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="96" align="center" header-align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="danger" class="delete-link" @click="confirmDelete(row.id)">删除</el-button>
@@ -61,12 +68,23 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog v-model="qrDialogVisible" title="分享二维码" width="360px" align-center>
+      <div v-if="currentQrShare" class="qr-dialog-body">
+        <div class="qr-large">
+          <qrcode-vue :value="currentQrShare.shareUrl" :size="240" level="M" render-as="svg" />
+        </div>
+        <strong>{{ currentQrShare.title || currentQrShare.categoryName || '分享链接' }}</strong>
+        <a :href="currentQrShare.shareUrl" target="_blank">{{ currentQrShare.shareUrl }}</a>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessageBox } from 'element-plus';
+import QrcodeVue from 'qrcode.vue';
 import { deleteShareLink, getCategoryDetail, getShareLinkList } from '@/api/user';
 import { userMainStore } from '@/store';
 import { toast } from '@/util/util';
@@ -74,6 +92,8 @@ import { toast } from '@/util/util';
 const store = userMainStore();
 const loading = ref(false);
 const shareLinks = ref<any[]>([]);
+const qrDialogVisible = ref(false);
+const currentQrShare = ref<any>(null);
 const categoryDetailMap = reactive<Record<string, any>>({});
 const filters = reactive({
   categoryId: '',
@@ -122,6 +142,11 @@ async function confirmDelete(id: string) {
   await deleteShareLink(id);
   toast('分享链接已删除', 'success');
   await loadShareLinks();
+}
+
+function openQrDialog(row: any) {
+  currentQrShare.value = row;
+  qrDialogVisible.value = true;
 }
 </script>
 
@@ -199,6 +224,50 @@ async function confirmDelete(id: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.qr-button {
+  display: inline-flex;
+  padding: 6px;
+  border: 1px solid rgba(47, 107, 255, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  cursor: zoom-in;
+  box-shadow: 0 8px 18px rgba(60, 102, 190, 0.08);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.qr-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(60, 102, 190, 0.14);
+}
+
+.qr-dialog-body {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.qr-large {
+  padding: 14px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid rgba(47, 107, 255, 0.12);
+  box-shadow: 0 18px 38px rgba(36, 84, 170, 0.12);
+}
+
+.qr-dialog-body strong {
+  color: #17315f;
+}
+
+.qr-dialog-body a {
+  max-width: 100%;
+  color: #2f6bff;
+  word-break: break-all;
+  font-size: 12px;
 }
 
 .delete-link {
