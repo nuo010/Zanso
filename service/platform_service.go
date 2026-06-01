@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -528,7 +529,7 @@ func DeleteCategory(c *gin.Context) {
 		return
 	}
 
-	removeLocalFiles(resourcePaths)
+	removeResourceFiles(c, resourcePaths)
 	result.OkSetData(c, gin.H{"id": categoryID})
 }
 
@@ -567,7 +568,7 @@ func DeleteCategoryItem(c *gin.Context) {
 		return
 	}
 
-	removeLocalFiles(resourcePaths)
+	removeResourceFiles(c, resourcePaths)
 	result.OkSetData(c, gin.H{"id": itemID})
 }
 
@@ -731,19 +732,13 @@ func UploadCategoryResource(c *gin.Context) {
 		now.Format("01"),
 		pathID+"_"+storedFileName,
 	)
-	localDir := getUploadLocalDir()
-	fullPath := filepath.Join(localDir, relativePath)
-
-	if err = os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-		result.ErrSetMsg(c, "创建上传目录失败")
-		return
-	}
-	if err = c.SaveUploadedFile(file, fullPath); err != nil {
-		result.ErrSetMsg(c, "保存文件失败")
+	storagePath := strings.ReplaceAll(relativePath, "\\", "/")
+	publicURL, err := saveUploadedResource(c, file, storagePath)
+	if err != nil {
+		result.ErrSetMsg(c, "保存资源文件失败")
 		return
 	}
 
-	publicURL := buildPublicAssetURL(c, relativePath)
 	resource := model.Resource{
 		ID:           util.GetUuid(),
 		UserID:       category.UserID,
@@ -752,7 +747,7 @@ func UploadCategoryResource(c *gin.Context) {
 		FileExt:      ext,
 		FileSize:     file.Size,
 		MimeType:     file.Header.Get("Content-Type"),
-		StoragePath:  strings.ReplaceAll(relativePath, "\\", "/"),
+		StoragePath:  storagePath,
 		URL:          publicURL,
 		Status:       model.ResourceStatusActive,
 		CreatedAt:    now,
@@ -832,7 +827,7 @@ func DeleteResource(c *gin.Context) {
 		return
 	}
 
-	removeLocalFiles([]string{resource.StoragePath})
+	removeResourceFiles(c, []string{resource.StoragePath})
 
 	result.OkSetData(c, gin.H{"id": resourceID})
 }
@@ -1143,6 +1138,32 @@ func buildPublicAssetURL(c *gin.Context, relativePath string) string {
 	return fmt.Sprintf("%s/uploads/%s", requestBaseURL(c), cleanPath)
 }
 
+func saveUploadedResource(c *gin.Context, file *multipart.FileHeader, storagePath string) (string, error) {
+	if db.UseMinioStorage() {
+		src, err := file.Open()
+		if err != nil {
+			return "", err
+		}
+		defer src.Close()
+
+		objectName, err := db.UploadMinioObject(c.Request.Context(), storagePath, src, file.Size, file.Header.Get("Content-Type"))
+		if err != nil {
+			return "", err
+		}
+		return db.BuildMinioObjectURL(objectName), nil
+	}
+
+	localDir := getUploadLocalDir()
+	fullPath := filepath.Join(localDir, filepath.FromSlash(storagePath))
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return "", err
+	}
+	if err := c.SaveUploadedFile(file, fullPath); err != nil {
+		return "", err
+	}
+	return buildPublicAssetURL(c, storagePath), nil
+}
+
 func buildShareURL(c *gin.Context, shareCode string) string {
 	baseURL := strings.TrimRight(strings.TrimSpace(viper.GetString("share.base_url")), "/")
 	if baseURL == "" {
@@ -1256,6 +1277,22 @@ func collectCategoryResourcePaths(categoryID string, categoryItemID string) ([]s
 	}
 	var paths []string
 	return paths, query.Pluck("tbl_resource.storage_path", &paths).Error
+}
+
+func removeResourceFiles(c *gin.Context, paths []string) {
+	if db.UseMinioStorage() {
+		for _, path := range paths {
+			cleanPath := strings.TrimSpace(path)
+			if cleanPath == "" {
+				continue
+			}
+			if err := db.DeleteMinioObject(c.Request.Context(), cleanPath); err != nil {
+				util.Log().Error("删除 MinIO 对象失败: %v", err)
+			}
+		}
+		return
+	}
+	removeLocalFiles(paths)
 }
 
 func removeLocalFiles(paths []string) {

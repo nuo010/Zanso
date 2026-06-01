@@ -19,6 +19,17 @@ storage:
   local_dir: ./uploads
   public_base_url: ""
 
+minio:
+  enabled: false
+  endpoint: "min00"
+  access_key: "singleminio"
+  secret_key: "singelminio123"
+  bucket: single0
+  secure: false
+  region: ""
+  auto_create_bucket: true
+  public_base_url: ""
+
 share:
   base_url: ""
 

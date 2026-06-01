@@ -21,5 +21,5 @@ func Init() {
 	// 连接数据库
 	db.Database()
 	db.Redis()
-	//db.MinioInit()
+	db.MinioInit()
 }
