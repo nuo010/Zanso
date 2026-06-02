@@ -1,6 +1,6 @@
 # config.yaml
 server:
-  port: 8888
+  port: 9999
 
 mysql:
   host: db.cfsingle.fun
@@ -16,19 +16,16 @@ redis:
   database: 0
 
 storage:
+  provider: minio
   local_dir: ./uploads
   public_base_url: ""
 
 minio:
-  enabled: false
-  endpoint: "min00"
-  access_key: "singleminio"
-  secret_key: "singelminio123"
+  endpoint: http://minio.cfsingle.fun:9000
+  accessKey: singleminio
+  secretKey: singelminio123
   bucket: single0
-  secure: false
-  region: ""
-  auto_create_bucket: true
-  public_base_url: ""
+  downloadBase: http://ik.aaxx.uk/getFile/
 
 share:
   base_url: ""

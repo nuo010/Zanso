@@ -40,6 +40,16 @@
                               v-for="resource in expandedItemDetailMap[categoryRow.id].resourceList"
                               :key="resource.id"
                               class="resource-card"
+                              :class="{
+                                'resource-card--dragging': draggingResourceId === resource.id,
+                                'resource-card--drag-over': dragOverResourceId === resource.id,
+                              }"
+                              draggable="true"
+                              @dragstart="handleResourceDragStart(categoryRow.id, resource.id)"
+                              @dragenter.prevent="handleResourceDragEnter(resource.id)"
+                              @dragover.prevent
+                              @drop.prevent="handleResourceDrop(categoryRow.id, resource.id)"
+                              @dragend="handleResourceDragEnd"
                             >
                               <div class="resource-preview">
                                 <el-image
@@ -58,6 +68,7 @@
                               <div class="resource-info">
                                 <strong>{{ resource.fileName }}</strong>
                                 <span>{{ resource.resourceType }} · {{ resource.mimeType || '未知类型' }}</span>
+                                <div class="resource-meta">大小：{{ formatFileSize(resource.fileSize) }}</div>
                                 <div class="resource-actions">
                                   <el-button
                                     link
@@ -250,8 +261,15 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="uploadDialogVisible" title="上传分类资源" width="460px">
-      <el-upload drag :auto-upload="false" :limit="1" :on-change="handleFileChange">
+    <el-dialog v-model="uploadDialogVisible" title="上传分类资源" width="460px" @closed="resetUploadDialog">
+      <el-upload
+        v-model:file-list="uploadFileList"
+        drag
+        :auto-upload="false"
+        :limit="1"
+        :on-change="handleFileChange"
+        :on-remove="handleFileRemove"
+      >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div>拖拽文件到这里，或者点击选择</div>
       </el-upload>
@@ -265,6 +283,7 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
+import type { UploadFile, UploadFiles, UploadUserFile } from 'element-plus';
 import { ElMessageBox } from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue';
 import {
@@ -276,6 +295,7 @@ import {
   deleteResource,
   getCategoryDetail,
   getCategoryItemDetail,
+  updateCategoryResourceSort,
   updateCategory,
   updateCategoryItem,
   uploadCategoryResource,
@@ -338,7 +358,11 @@ const shareForm = reactive({
 const uploadTargetCollectionId = ref('');
 const uploadTargetCategoryId = ref('');
 const selectedFile = ref<File | null>(null);
+const uploadFileList = ref<UploadUserFile[]>([]);
 const categoryItemParentName = ref('');
+const draggingCategoryId = ref('');
+const draggingResourceId = ref('');
+const dragOverResourceId = ref('');
 
 async function refreshList() {
   loading.value = true;
@@ -552,6 +576,83 @@ function normalizeResourceList(resourceList: any[]) {
   }));
 }
 
+function formatFileSize(size?: number) {
+  const fileSize = Number(size || 0);
+  if (!fileSize) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = fileSize;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const fixed = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+  return `${value.toFixed(fixed)} ${units[unitIndex]}`;
+}
+
+function handleResourceDragStart(categoryId: string, resourceId: string) {
+  draggingCategoryId.value = categoryId;
+  draggingResourceId.value = resourceId;
+  dragOverResourceId.value = resourceId;
+}
+
+function handleResourceDragEnter(resourceId: string) {
+  if (!draggingResourceId.value || draggingResourceId.value === resourceId) return;
+  dragOverResourceId.value = resourceId;
+}
+
+async function handleResourceDrop(categoryId: string, targetResourceId: string) {
+  const sourceResourceId = draggingResourceId.value;
+  if (!sourceResourceId || !categoryId || sourceResourceId === targetResourceId) {
+    handleResourceDragEnd();
+    return;
+  }
+  if (draggingCategoryId.value && draggingCategoryId.value !== categoryId) {
+    handleResourceDragEnd();
+    return;
+  }
+
+  const targetDetail = expandedItemDetailMap[categoryId];
+  const resourceList = targetDetail?.resourceList || [];
+  const sourceIndex = resourceList.findIndex((item: any) => item.id === sourceResourceId);
+  const targetIndex = resourceList.findIndex((item: any) => item.id === targetResourceId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+    handleResourceDragEnd();
+    return;
+  }
+
+  const nextList = [...resourceList];
+  const [movedItem] = nextList.splice(sourceIndex, 1);
+  nextList.splice(targetIndex, 0, movedItem);
+  const previousList = resourceList.slice();
+
+  expandedItemDetailMap[categoryId] = {
+    ...targetDetail,
+    resourceList: nextList,
+  };
+
+  try {
+    await updateCategoryResourceSort(categoryId, {
+      resourceRelationIds: nextList.map((item: any) => item.id),
+    });
+    toast('资源顺序已更新', 'success');
+  } catch (error) {
+    expandedItemDetailMap[categoryId] = {
+      ...targetDetail,
+      resourceList: previousList,
+    };
+    toast('资源顺序保存失败', 'error');
+  } finally {
+    handleResourceDragEnd();
+  }
+}
+
+function handleResourceDragEnd() {
+  draggingCategoryId.value = '';
+  draggingResourceId.value = '';
+  dragOverResourceId.value = '';
+}
+
 function handleCollectionExpand(row: any, expandedRows: any[]) {
   if (expandedRows.some((item) => item.id === row.id)) {
     loadCollectionDetail(row.id, expandedDetailMap[row.id]?.page || 1);
@@ -593,12 +694,23 @@ async function handleToggleInnerCategoryVisible(row: any, value: boolean) {
 function openUploadDialog(collectionId: string, categoryId: string) {
   uploadTargetCollectionId.value = collectionId;
   uploadTargetCategoryId.value = categoryId;
-  selectedFile.value = null;
+  resetUploadDialog();
   uploadDialogVisible.value = true;
 }
 
-function handleFileChange(file: any) {
+function handleFileChange(file: UploadFile, fileList: UploadFiles) {
   selectedFile.value = file.raw;
+  uploadFileList.value = fileList.slice(-1);
+}
+
+function handleFileRemove() {
+  selectedFile.value = null;
+  uploadFileList.value = [];
+}
+
+function resetUploadDialog() {
+  selectedFile.value = null;
+  uploadFileList.value = [];
 }
 
 async function submitUpload() {
@@ -620,6 +732,7 @@ async function submitUpload() {
     await uploadCategoryResource(uploadTargetCollectionId.value, formData);
     toast('资源上传成功', 'success');
     uploadDialogVisible.value = false;
+    resetUploadDialog();
     await loadCollectionDetail(uploadTargetCollectionId.value, expandedDetailMap[uploadTargetCollectionId.value]?.page || 1);
     await loadInnerCategoryDetail(uploadTargetCategoryId.value);
   } finally {
@@ -752,6 +865,19 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(116, 153, 230, 0.16);
   box-shadow: 0 10px 24px rgba(60, 102, 190, 0.07);
+  cursor: grab;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.resource-card--dragging {
+  opacity: 0.62;
+  transform: rotate(1.5deg) scale(0.98);
+  box-shadow: 0 18px 32px rgba(60, 102, 190, 0.16);
+}
+
+.resource-card--drag-over {
+  border-color: rgba(47, 107, 255, 0.52);
+  box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
 }
 
 .resource-preview {
@@ -790,9 +916,16 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   font-size: 11px;
 }
 
+.resource-meta {
+  color: #8a99b8;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .resource-actions {
   display: flex;
   justify-content: flex-end;
+  margin-top: 6px;
   gap: 8px;
   align-items: center;
 }

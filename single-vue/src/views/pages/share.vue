@@ -9,14 +9,14 @@
     </div>
     <div v-if="detail" class="share-card">
       <section class="hero">
-        <span class="eyebrow">Zanso Share</span>
         <h1>{{ heroTitle }}</h1>
         <p>{{ descriptionText }}</p>
       </section>
 
-      <section v-if="isCollectionShare && detail.categories?.length" class="section">
-        <div class="section-header">
+      <section v-if="isCollectionShare && detail.categories?.length" class="section section--filters">
+        <div class="section-header section-header--filters">
           <h2>分类筛选</h2>
+          <span>点击切换要查看的分类资源</span>
         </div>
         <el-segmented v-model="selectedFilter" :options="filterOptions" class="filter-segmented" />
       </section>
@@ -183,40 +183,48 @@ function normalizeResourceList(resourceList: any[]) {
 }
 
 .hero {
-  padding: 22px 20px 18px;
+  padding: 18px 20px 16px;
   background: linear-gradient(135deg, #2f6bff, #78bcff);
   color: #fdfefe;
 }
 
-.eyebrow {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .hero h1 {
-  margin: 14px 0 8px;
-  font-size: 28px;
+  margin: 0 0 6px;
+  font-size: 24px;
   line-height: 1.2;
 }
 
 .hero p {
   margin: 0;
   color: rgba(253, 254, 255, 0.88);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .section {
   padding: 20px;
 }
 
+.section--filters {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
 .section-header {
   display: block;
+}
+
+.section-header--filters {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.section-header--filters span {
+  color: #7f90af;
+  font-size: 12px;
 }
 
 .section h2 {
@@ -227,7 +235,17 @@ function normalizeResourceList(resourceList: any[]) {
 
 .filter-segmented {
   display: inline-flex;
-  margin-top: 4px;
+  padding: 6px;
+  border-radius: 16px;
+  background: #f3f7ff;
+  border: 1px solid rgba(123, 162, 255, 0.16);
+}
+
+.filter-segmented :deep(.el-segmented__item) {
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .media-grid {
@@ -283,11 +301,11 @@ function normalizeResourceList(resourceList: any[]) {
   }
 
   .hero {
-    padding: 30px 28px 22px;
+    padding: 24px 28px 18px;
   }
 
   .hero h1 {
-    font-size: 34px;
+    font-size: 30px;
   }
 
   .section {

@@ -574,21 +574,16 @@ func DeleteCategoryItem(c *gin.Context) {
 	result.OkSetData(c, gin.H{"id": itemID})
 }
 
-func GetUserCategoryList(c *gin.Context) {
-	userID := c.Param("userId")
-	currentUser, ok := util.GetCurrentUser(c)
-	if !ok {
+func GetCurrentUserCategoryList(c *gin.Context) {
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
 		result.ErrSetMsg(c, "登录状态无效")
-		return
-	}
-	if userID == "" || userID != currentUser.ID {
-		result.ErrSetMsg(c, "无权查看其他用户的展册")
 		return
 	}
 
 	page, pageSize := parsePageParams(c)
 	var categoryList []model.Category
-	query := db.DB.Model(&model.Category{}).Where("user_id = ?", userID)
+	query := db.DB.Model(&model.Category{}).Where("user_id = ?", currentUserID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		result.ErrSetMsg(c, "查询展册失败")
@@ -598,12 +593,40 @@ func GetUserCategoryList(c *gin.Context) {
 		result.ErrSetMsg(c, "查询展册失败")
 		return
 	}
+
 	result.OkSetData(c, model.PageResult{
 		List:     categoryList,
 		Total:    total,
 		Page:     page,
 		PageSize: pageSize,
 	})
+}
+
+func GetDashboardStats(c *gin.Context) {
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+
+	stats := model.DashboardStats{}
+	if err := db.DB.Model(&model.Category{}).Where("user_id = ?", currentUserID).Count(&stats.CollectionCount).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
+	if err := db.DB.Model(&model.Resource{}).Where("user_id = ?", currentUserID).Count(&stats.ResourceCount).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
+	if err := db.DB.Model(&model.Resource{}).
+		Where("user_id = ?", currentUserID).
+		Select("COALESCE(SUM(file_size), 0)").
+		Scan(&stats.FileSizeTotal).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
+
+	result.OkSetData(c, stats)
 }
 
 func GetCategoryDetail(c *gin.Context) {
@@ -679,6 +702,79 @@ func GetCategoryItemDetail(c *gin.Context) {
 		"category":     item,
 		"resourceList": resourceList,
 		"shareLinks":   shareLinks,
+	})
+}
+
+func UpdateCategoryResourceSort(c *gin.Context) {
+	itemID := strings.TrimSpace(c.Param("id"))
+	if itemID == "" {
+		result.ErrSetMsg(c, "分类 ID 不能为空")
+		return
+	}
+
+	currentUserID := util.CurrentUserID(c)
+	if currentUserID == "" {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+
+	var req model.UpdateCategoryResourceSortRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.ErrSetMsg(c, "排序参数错误")
+		return
+	}
+	if len(req.ResourceRelationIDs) == 0 {
+		result.ErrSetMsg(c, "资源顺序不能为空")
+		return
+	}
+
+	var item model.CategoryItem
+	if err := db.DB.Where("id = ? AND user_id = ?", itemID, currentUserID).Take(&item).Error; err != nil {
+		result.ErrSetMsg(c, "分类不存在")
+		return
+	}
+
+	var relations []model.CategoryResourceRelation
+	if err := db.DB.Where("category_id = ? AND user_id = ?", itemID, currentUserID).Find(&relations).Error; err != nil {
+		result.ErrSetMsg(c, "查询资源失败")
+		return
+	}
+	if len(relations) != len(req.ResourceRelationIDs) {
+		result.ErrSetMsg(c, "资源顺序数据不完整")
+		return
+	}
+
+	relationMap := make(map[string]model.CategoryResourceRelation, len(relations))
+	for _, relation := range relations {
+		relationMap[relation.ID] = relation
+	}
+	for _, relationID := range req.ResourceRelationIDs {
+		if _, ok := relationMap[relationID]; !ok {
+			result.ErrSetMsg(c, "资源顺序数据无效")
+			return
+		}
+	}
+
+	now := util.GetTime()
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		for index, relationID := range req.ResourceRelationIDs {
+			if err := tx.Model(&model.CategoryResourceRelation{}).
+				Where("id = ? AND category_id = ? AND user_id = ?", relationID, itemID, currentUserID).
+				Updates(map[string]interface{}{
+					"sort":       index + 1,
+					"updated_at": now,
+				}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		result.ErrSetMsg(c, "保存资源顺序失败")
+		return
+	}
+
+	result.OkSetData(c, gin.H{
+		"categoryId": itemID,
 	})
 }
 

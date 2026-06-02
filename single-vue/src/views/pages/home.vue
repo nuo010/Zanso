@@ -16,11 +16,15 @@
       </article>
       <article class="stat-card">
         <span>展册数量</span>
-        <strong>{{ store.categories.length }}</strong>
+        <strong>{{ store.dashboardStats.collectionCount }}</strong>
       </article>
       <article class="stat-card">
-        <span>账号状态</span>
-        <strong>{{ store.user.status || 'active' }}</strong>
+        <span>资源数量</span>
+        <strong>{{ store.dashboardStats.resourceCount }}</strong>
+      </article>
+      <article class="stat-card">
+        <span>文件占用大小</span>
+        <strong>{{ formatFileSize(store.dashboardStats.fileSizeTotal) }}</strong>
       </article>
     </section>
 
@@ -54,8 +58,21 @@ onMounted(async () => {
   if (!store.user.id) {
     await store.loadProfile();
   }
-  await store.loadCategories();
+  await Promise.all([store.loadCategories(), store.loadDashboardStats()]);
 });
+
+function formatFileSize(size: number) {
+  if (!size) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = size;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const fixed = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+  return `${value.toFixed(fixed)} ${units[unitIndex]}`;
+}
 </script>
 
 <style scoped lang="scss">
@@ -94,7 +111,7 @@ onMounted(async () => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 

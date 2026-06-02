@@ -74,11 +74,18 @@ export function deleteCategory(id: string) {
   });
 }
 
-export function getUserCategories(userId: string, params?: { page?: number; pageSize?: number }) {
+export function getCurrentUserCategories(params?: { page?: number; pageSize?: number }) {
   return AxiosUtil({
-    url: `/api/platform/users/${userId}/collections`,
+    url: '/api/platform/collections',
     method: 'get',
     params,
+  });
+}
+
+export function getDashboardStats() {
+  return AxiosUtil({
+    url: '/api/platform/dashboard/stats',
+    method: 'get',
   });
 }
 
@@ -150,6 +157,14 @@ export function deleteResource(id: string) {
   return AxiosUtil({
     url: `/api/platform/resources/${id}/delete`,
     method: 'post',
+  });
+}
+
+export function updateCategoryResourceSort(id: string, data: { resourceRelationIds: string[] }) {
+  return AxiosUtil({
+    url: `/api/platform/categories/${id}/resources/sort`,
+    method: 'post',
+    data,
   });
 }
 

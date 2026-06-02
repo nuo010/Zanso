@@ -6,12 +6,15 @@
 import { onMounted } from 'vue';
 import { userMainStore } from '@/store';
 import { useRoute } from 'vue-router';
+import { getToken } from '@/util/auth';
 
 const store = userMainStore();
 const route = useRoute();
 
 onMounted(async () => {
-  if (route.path === '/login') return;
+  if (route.path === '/login' || route.meta.public) return;
+  const token = getToken();
+  if (!token) return;
   if (!store.user.id) {
     await store.loadProfile();
   }

@@ -214,6 +214,10 @@ type UpdateCategoryItemRequest struct {
 	Status      string `json:"status"`
 }
 
+type UpdateCategoryResourceSortRequest struct {
+	ResourceRelationIDs []string `json:"resourceRelationIds"`
+}
+
 type CreateShareLinkRequest struct {
 	CollectionID string     `json:"collectionId"`
 	CategoryID   string     `json:"categoryId"`
@@ -239,6 +243,12 @@ type PageResult struct {
 	Total    int64       `json:"total"`
 	Page     int         `json:"page"`
 	PageSize int         `json:"pageSize"`
+}
+
+type DashboardStats struct {
+	CollectionCount int64 `json:"collectionCount"`
+	ResourceCount   int64 `json:"resourceCount"`
+	FileSizeTotal   int64 `json:"fileSizeTotal"`
 }
 
 type UserWithRoles struct {

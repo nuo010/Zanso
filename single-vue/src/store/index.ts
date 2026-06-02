@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { globalMenuAsideWidthBig, globalMenuAsideWidthLittle } from '@/util/constants';
-import { getCurrentUser, getUserCategories } from '@/api/user';
+import { getCurrentUser, getCurrentUserCategories, getDashboardStats } from '@/api/user';
 
 export interface PlatformUser {
   id: string;
@@ -23,6 +23,12 @@ export interface Collection {
   createdAt?: string;
 }
 
+export interface DashboardStats {
+  collectionCount: number;
+  resourceCount: number;
+  fileSizeTotal: number;
+}
+
 export const userMainStore = defineStore('main', {
   persist: {
     enabled: true,
@@ -39,6 +45,11 @@ export const userMainStore = defineStore('main', {
     categoryTotal: 0,
     categoryPage: 1,
     categoryPageSize: 20,
+    dashboardStats: {
+      collectionCount: 0,
+      resourceCount: 0,
+      fileSizeTotal: 0,
+    } as DashboardStats,
     asideWidth: globalMenuAsideWidthBig,
   }),
   getters: {
@@ -53,13 +64,21 @@ export const userMainStore = defineStore('main', {
       return res.data;
     },
     async loadCategories(page = 1, pageSize = 20) {
-      if (!this.user.id) return [];
-      const res = await getUserCategories(this.user.id, { page, pageSize });
+      const res = await getCurrentUserCategories({ page, pageSize });
       this.categories = res.data?.list || [];
       this.categoryTotal = res.data?.total || 0;
       this.categoryPage = res.data?.page || page;
       this.categoryPageSize = res.data?.pageSize || pageSize;
       return this.categories;
+    },
+    async loadDashboardStats() {
+      const res = await getDashboardStats();
+      this.dashboardStats = {
+        collectionCount: res.data?.collectionCount || 0,
+        resourceCount: res.data?.resourceCount || 0,
+        fileSizeTotal: res.data?.fileSizeTotal || 0,
+      };
+      return this.dashboardStats;
     },
     setUserStore(user: PlatformUser) {
       this.user = user;
