@@ -260,7 +260,7 @@ func buildUsersWithRoles(users []model.User) ([]model.UserWithRoles, error) {
 func CreateCategory(c *gin.Context) {
 	var req model.CreateCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		result.ErrSetMsg(c, "分类参数错误")
+		result.ErrSetMsg(c, "展册参数错误")
 		return
 	}
 	currentUser, ok := util.GetCurrentUser(c)
@@ -269,11 +269,11 @@ func CreateCategory(c *gin.Context) {
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		result.ErrSetMsg(c, "分类名称不能为空")
+		result.ErrSetMsg(c, "展册名称不能为空")
 		return
 	}
 	if hasCategoryName(currentUser.ID, req.Name, "") {
-		result.ErrSetMsg(c, "分类名称不能重复")
+		result.ErrSetMsg(c, "展册名称不能重复")
 		return
 	}
 
@@ -298,7 +298,7 @@ func CreateCategory(c *gin.Context) {
 		UpdatedAt:   util.GetTime(),
 	}
 	if err := db.DB.Create(&category).Error; err != nil {
-		result.ErrSetMsg(c, "创建分类失败")
+		result.ErrSetMsg(c, "创建展册失败")
 		return
 	}
 	result.OkSetData(c, category)
@@ -307,12 +307,12 @@ func CreateCategory(c *gin.Context) {
 func UpdateCategory(c *gin.Context) {
 	categoryID := strings.TrimSpace(c.Param("id"))
 	if categoryID == "" {
-		result.ErrSetMsg(c, "分类 ID 不能为空")
+		result.ErrSetMsg(c, "展册 ID 不能为空")
 		return
 	}
 	var req model.UpdateCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		result.ErrSetMsg(c, "分类参数错误")
+		result.ErrSetMsg(c, "展册参数错误")
 		return
 	}
 	currentUserID := util.CurrentUserID(c)
@@ -321,17 +321,17 @@ func UpdateCategory(c *gin.Context) {
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		result.ErrSetMsg(c, "分类名称不能为空")
+		result.ErrSetMsg(c, "展册名称不能为空")
 		return
 	}
 
 	var category model.Category
 	if err := db.DB.Where("id = ? AND user_id = ?", categoryID, currentUserID).Take(&category).Error; err != nil {
-		result.ErrSetMsg(c, "分类不存在")
+		result.ErrSetMsg(c, "展册不存在")
 		return
 	}
 	if hasCategoryName(currentUserID, req.Name, categoryID) {
-		result.ErrSetMsg(c, "分类名称不能重复")
+		result.ErrSetMsg(c, "展册名称不能重复")
 		return
 	}
 
@@ -351,7 +351,7 @@ func UpdateCategory(c *gin.Context) {
 		"status":      status,
 		"updated_at":  now,
 	}).Error; err != nil {
-		result.ErrSetMsg(c, "更新分类失败")
+		result.ErrSetMsg(c, "更新展册失败")
 		return
 	}
 
@@ -366,7 +366,7 @@ func UpdateCategory(c *gin.Context) {
 func CreateCategoryItem(c *gin.Context) {
 	var req model.CreateCategoryItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		result.ErrSetMsg(c, "分类项参数错误")
+		result.ErrSetMsg(c, "分类参数错误")
 		return
 	}
 	currentUserID := util.CurrentUserID(c)
@@ -374,18 +374,22 @@ func CreateCategoryItem(c *gin.Context) {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
-	if strings.TrimSpace(req.CategoryID) == "" || strings.TrimSpace(req.Name) == "" {
-		result.ErrSetMsg(c, "分类 ID 和分类项名称不能为空")
+	collectionID := strings.TrimSpace(req.CategoryID)
+	if collectionID == "" {
+		collectionID = strings.TrimSpace(req.ParentID)
+	}
+	if collectionID == "" || strings.TrimSpace(req.Name) == "" {
+		result.ErrSetMsg(c, "展册 ID 和分类名称不能为空")
 		return
 	}
 
 	var category model.Category
-	if err := db.DB.Where("id = ? AND user_id = ?", req.CategoryID, currentUserID).Take(&category).Error; err != nil {
-		result.ErrSetMsg(c, "分类不存在")
+	if err := db.DB.Where("id = ? AND user_id = ?", collectionID, currentUserID).Take(&category).Error; err != nil {
+		result.ErrSetMsg(c, "展册不存在")
 		return
 	}
-	if hasCategoryItemName(currentUserID, req.CategoryID, req.Name, "") {
-		result.ErrSetMsg(c, "分类项名称不能重复")
+	if hasCategoryItemName(currentUserID, collectionID, req.Name, "") {
+		result.ErrSetMsg(c, "分类名称不能重复")
 		return
 	}
 
@@ -401,7 +405,7 @@ func CreateCategoryItem(c *gin.Context) {
 	item := model.CategoryItem{
 		ID:          util.GetUuid(),
 		UserID:      currentUserID,
-		CategoryID:  req.CategoryID,
+		CategoryID:  collectionID,
 		Name:        strings.TrimSpace(req.Name),
 		Description: strings.TrimSpace(req.Description),
 		CoverURL:    strings.TrimSpace(req.CoverURL),
@@ -411,7 +415,7 @@ func CreateCategoryItem(c *gin.Context) {
 		UpdatedAt:   util.GetTime(),
 	}
 	if err := db.DB.Create(&item).Error; err != nil {
-		result.ErrSetMsg(c, "创建分类项失败")
+		result.ErrSetMsg(c, "创建分类失败")
 		return
 	}
 	result.OkSetData(c, item)
@@ -420,13 +424,13 @@ func CreateCategoryItem(c *gin.Context) {
 func UpdateCategoryItem(c *gin.Context) {
 	itemID := strings.TrimSpace(c.Param("id"))
 	if itemID == "" {
-		result.ErrSetMsg(c, "分类项 ID 不能为空")
+		result.ErrSetMsg(c, "分类 ID 不能为空")
 		return
 	}
 
 	var req model.UpdateCategoryItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		result.ErrSetMsg(c, "分类项参数错误")
+		result.ErrSetMsg(c, "分类参数错误")
 		return
 	}
 
@@ -436,17 +440,17 @@ func UpdateCategoryItem(c *gin.Context) {
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		result.ErrSetMsg(c, "分类项名称不能为空")
+		result.ErrSetMsg(c, "分类名称不能为空")
 		return
 	}
 
 	var item model.CategoryItem
 	if err := db.DB.Where("id = ? AND user_id = ?", itemID, currentUserID).Take(&item).Error; err != nil {
-		result.ErrSetMsg(c, "分类项不存在")
+		result.ErrSetMsg(c, "分类不存在")
 		return
 	}
 	if hasCategoryItemName(currentUserID, item.CategoryID, req.Name, itemID) {
-		result.ErrSetMsg(c, "分类项名称不能重复")
+		result.ErrSetMsg(c, "分类名称不能重复")
 		return
 	}
 
@@ -466,7 +470,7 @@ func UpdateCategoryItem(c *gin.Context) {
 		"status":      status,
 		"updated_at":  now,
 	}).Error; err != nil {
-		result.ErrSetMsg(c, "更新分类项失败")
+		result.ErrSetMsg(c, "更新分类失败")
 		return
 	}
 
@@ -481,7 +485,7 @@ func UpdateCategoryItem(c *gin.Context) {
 func DeleteCategory(c *gin.Context) {
 	categoryID := strings.TrimSpace(c.Param("id"))
 	if categoryID == "" {
-		result.ErrSetMsg(c, "分类 ID 不能为空")
+		result.ErrSetMsg(c, "展册 ID 不能为空")
 		return
 	}
 	currentUserID := util.CurrentUserID(c)
@@ -492,7 +496,7 @@ func DeleteCategory(c *gin.Context) {
 
 	var category model.Category
 	if err := db.DB.Where("id = ? AND user_id = ?", categoryID, currentUserID).Take(&category).Error; err != nil {
-		result.ErrSetMsg(c, "分类不存在")
+		result.ErrSetMsg(c, "展册不存在")
 		return
 	}
 
@@ -526,7 +530,7 @@ func DeleteCategory(c *gin.Context) {
 		}
 		return tx.Where("id = ?", categoryID).Delete(&model.Category{}).Error
 	}); err != nil {
-		result.ErrSetMsg(c, "删除分类失败")
+		result.ErrSetMsg(c, "删除展册失败")
 		return
 	}
 
@@ -537,7 +541,7 @@ func DeleteCategory(c *gin.Context) {
 func DeleteCategoryItem(c *gin.Context) {
 	itemID := strings.TrimSpace(c.Param("id"))
 	if itemID == "" {
-		result.ErrSetMsg(c, "分类项 ID 不能为空")
+		result.ErrSetMsg(c, "分类 ID 不能为空")
 		return
 	}
 	currentUserID := util.CurrentUserID(c)
@@ -548,7 +552,7 @@ func DeleteCategoryItem(c *gin.Context) {
 
 	var item model.CategoryItem
 	if err := db.DB.Where("id = ? AND user_id = ?", itemID, currentUserID).Take(&item).Error; err != nil {
-		result.ErrSetMsg(c, "分类项不存在")
+		result.ErrSetMsg(c, "分类不存在")
 		return
 	}
 
@@ -565,7 +569,7 @@ func DeleteCategoryItem(c *gin.Context) {
 		}
 		return tx.Where("id = ?", itemID).Delete(&model.CategoryItem{}).Error
 	}); err != nil {
-		result.ErrSetMsg(c, "删除分类项失败")
+		result.ErrSetMsg(c, "删除分类失败")
 		return
 	}
 
@@ -581,7 +585,7 @@ func GetUserCategoryList(c *gin.Context) {
 		return
 	}
 	if userID == "" || userID != currentUser.ID {
-		result.ErrSetMsg(c, "无权查看其他用户的分类")
+		result.ErrSetMsg(c, "无权查看其他用户的展册")
 		return
 	}
 
@@ -590,11 +594,11 @@ func GetUserCategoryList(c *gin.Context) {
 	query := db.DB.Model(&model.Category{}).Where("user_id = ?", userID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
-		result.ErrSetMsg(c, "查询分类失败")
+		result.ErrSetMsg(c, "查询展册失败")
 		return
 	}
 	if err := query.Order("created_at desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&categoryList).Error; err != nil {
-		result.ErrSetMsg(c, "查询分类失败")
+		result.ErrSetMsg(c, "查询展册失败")
 		return
 	}
 	result.OkSetData(c, model.PageResult{
@@ -608,7 +612,7 @@ func GetUserCategoryList(c *gin.Context) {
 func GetCategoryDetail(c *gin.Context) {
 	categoryID := c.Param("id")
 	if categoryID == "" {
-		result.ErrSetMsg(c, "分类 ID 不能为空")
+		result.ErrSetMsg(c, "展册 ID 不能为空")
 		return
 	}
 	currentUserID := util.CurrentUserID(c)
@@ -619,7 +623,7 @@ func GetCategoryDetail(c *gin.Context) {
 
 	var category model.Category
 	if err := db.DB.Where("id = ? AND user_id = ?", categoryID, currentUserID).Take(&category).Error; err != nil {
-		result.ErrSetMsg(c, "分类不存在")
+		result.ErrSetMsg(c, "展册不存在")
 		return
 	}
 
@@ -632,7 +636,7 @@ func GetCategoryDetail(c *gin.Context) {
 	itemQuery := db.DB.Model(&model.CategoryItem{}).Where("category_id = ?", categoryID)
 	var itemTotal int64
 	if err := itemQuery.Count(&itemTotal).Error; err != nil {
-		result.ErrSetMsg(c, "查询分类详情失败")
+		result.ErrSetMsg(c, "查询展册详情失败")
 		return
 	}
 	itemQuery.Order("created_at desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&itemList)
@@ -640,21 +644,21 @@ func GetCategoryDetail(c *gin.Context) {
 	db.DB.Where("category_id = ?", categoryID).Order("created_at desc").Find(&shareLinks)
 
 	result.OkSetData(c, model.CategoryDetail{
-		Category:      category,
-		User:          user,
-		CategoryItems: itemList,
-		ItemTotal:     itemTotal,
-		ItemPage:      page,
-		ItemPageSize:  pageSize,
-		ResourceList:  resourceList,
-		ShareLinks:    shareLinks,
+		Collection:   category,
+		User:         user,
+		Categories:   itemList,
+		Total:        itemTotal,
+		Page:         page,
+		PageSize:     pageSize,
+		ResourceList: resourceList,
+		ShareLinks:   shareLinks,
 	})
 }
 
 func GetCategoryItemDetail(c *gin.Context) {
 	itemID := c.Param("id")
 	if itemID == "" {
-		result.ErrSetMsg(c, "分类项 ID 不能为空")
+		result.ErrSetMsg(c, "分类 ID 不能为空")
 		return
 	}
 	currentUserID := util.CurrentUserID(c)
@@ -665,7 +669,7 @@ func GetCategoryItemDetail(c *gin.Context) {
 
 	var item model.CategoryItem
 	if err := db.DB.Where("id = ? AND user_id = ?", itemID, currentUserID).Take(&item).Error; err != nil {
-		result.ErrSetMsg(c, "分类项不存在")
+		result.ErrSetMsg(c, "分类不存在")
 		return
 	}
 
@@ -675,7 +679,7 @@ func GetCategoryItemDetail(c *gin.Context) {
 	db.DB.Where("category_item_id = ?", itemID).Order("created_at desc").Find(&shareLinks)
 
 	result.OkSetData(c, gin.H{
-		"categoryItem": item,
+		"category":     item,
 		"resourceList": resourceList,
 		"shareLinks":   shareLinks,
 	})
@@ -684,7 +688,7 @@ func GetCategoryItemDetail(c *gin.Context) {
 func UploadCategoryResource(c *gin.Context) {
 	categoryID := c.Param("id")
 	if categoryID == "" {
-		result.ErrSetMsg(c, "分类 ID 不能为空")
+		result.ErrSetMsg(c, "展册 ID 不能为空")
 		return
 	}
 	currentUserID := util.CurrentUserID(c)
@@ -695,7 +699,7 @@ func UploadCategoryResource(c *gin.Context) {
 
 	var category model.Category
 	if err := db.DB.Where("id = ? AND user_id = ?", categoryID, currentUserID).Take(&category).Error; err != nil {
-		result.ErrSetMsg(c, "分类不存在")
+		result.ErrSetMsg(c, "展册不存在")
 		return
 	}
 
@@ -703,7 +707,7 @@ func UploadCategoryResource(c *gin.Context) {
 	if categoryItemID != "" {
 		var item model.CategoryItem
 		if err := db.DB.Where("id = ? AND category_id = ? AND user_id = ?", categoryItemID, categoryID, currentUserID).Take(&item).Error; err != nil {
-			result.ErrSetMsg(c, "分类项不存在")
+			result.ErrSetMsg(c, "分类不存在")
 			return
 		}
 	}
@@ -789,7 +793,7 @@ func UploadCategoryResource(c *gin.Context) {
 		}
 		return nil
 	}); err != nil {
-		result.ErrSetMsg(c, "保存分类资源失败")
+		result.ErrSetMsg(c, "保存资源失败")
 		return
 	}
 
@@ -840,43 +844,54 @@ func CreateShareLink(c *gin.Context) {
 		result.ErrSetMsg(c, "登录状态无效")
 		return
 	}
-	if req.CategoryID == "" {
-		result.ErrSetMsg(c, "分类 ID 不能为空")
+	collectionID := strings.TrimSpace(req.CollectionID)
+	if collectionID == "" {
+		collectionID = strings.TrimSpace(req.CategoryID)
+	}
+	categoryID := strings.TrimSpace(req.CategoryID)
+	if categoryID == "" {
+		categoryID = strings.TrimSpace(req.LegacyItemID)
+	}
+	if collectionID == "" {
+		result.ErrSetMsg(c, "展册 ID 不能为空")
 		return
 	}
 
 	targetType := strings.TrimSpace(req.TargetType)
 	if targetType == "" {
+		targetType = model.ShareTargetCollection
+	}
+	if targetType == model.ShareTargetItem {
 		targetType = model.ShareTargetCategory
 	}
-	if targetType != model.ShareTargetCategory && targetType != model.ShareTargetItem {
+	if targetType != model.ShareTargetCollection && targetType != model.ShareTargetCategory {
 		result.ErrSetMsg(c, "分享目标类型不正确")
 		return
 	}
 
 	var category model.Category
-	if err := db.DB.Where("id = ? AND user_id = ?", req.CategoryID, currentUserID).Take(&category).Error; err != nil {
-		result.ErrSetMsg(c, "分类不存在或不属于当前用户")
+	if err := db.DB.Where("id = ? AND user_id = ?", collectionID, currentUserID).Take(&category).Error; err != nil {
+		result.ErrSetMsg(c, "展册不存在或不属于当前用户")
 		return
 	}
 	if !category.Visible {
-		result.ErrSetMsg(c, "当前分类不可分享")
+		result.ErrSetMsg(c, "当前展册不可分享")
 		return
 	}
 
 	var item *model.CategoryItem
-	if targetType == model.ShareTargetItem {
-		if req.CategoryItemID == "" {
-			result.ErrSetMsg(c, "分享分类项时必须传分类项 ID")
+	if targetType == model.ShareTargetCategory {
+		if categoryID == "" {
+			result.ErrSetMsg(c, "分享分类时必须传分类 ID")
 			return
 		}
 		var itemRecord model.CategoryItem
-		if err := db.DB.Where("id = ? AND category_id = ? AND user_id = ?", req.CategoryItemID, req.CategoryID, currentUserID).Take(&itemRecord).Error; err != nil {
-			result.ErrSetMsg(c, "分类项不存在或不属于当前分类")
+		if err := db.DB.Where("id = ? AND category_id = ? AND user_id = ?", categoryID, collectionID, currentUserID).Take(&itemRecord).Error; err != nil {
+			result.ErrSetMsg(c, "分类不存在或不属于当前展册")
 			return
 		}
 		if !itemRecord.Visible {
-			result.ErrSetMsg(c, "当前分类项不可分享")
+			result.ErrSetMsg(c, "当前分类不可分享")
 			return
 		}
 		item = &itemRecord
@@ -886,8 +901,8 @@ func CreateShareLink(c *gin.Context) {
 	shareLink := model.ShareLink{
 		ID:             util.GetUuid(),
 		UserID:         currentUserID,
-		CategoryID:     req.CategoryID,
-		CategoryItemID: req.CategoryItemID,
+		CategoryID:     collectionID,
+		CategoryItemID: categoryID,
 		TargetType:     targetType,
 		ShareCode:      util.GetUuid()[:10],
 		Title:          shareTitle(req, category, item),
@@ -918,6 +933,9 @@ func GetShareLinkList(c *gin.Context) {
 
 	categoryID := strings.TrimSpace(c.Query("categoryId"))
 	categoryItemID := strings.TrimSpace(c.Query("categoryItemId"))
+	if categoryItemID == "" {
+		categoryItemID = strings.TrimSpace(c.Query("itemId"))
+	}
 
 	query := db.DB.Table("tbl_share_link AS sl").
 		Select(`
@@ -961,21 +979,21 @@ func GetShareLinkList(c *gin.Context) {
 	list := make([]model.ShareLinkListItem, 0, len(rows))
 	for _, row := range rows {
 		list = append(list, model.ShareLinkListItem{
-			ID:               row.ID,
-			ShareCode:        row.ShareCode,
-			Title:            row.Title,
-			Description:      row.Description,
-			TargetType:       row.TargetType,
-			CategoryID:       row.CategoryID,
-			CategoryName:     row.CategoryName,
-			CategoryItemID:   row.CategoryItemID,
-			CategoryItemName: row.CategoryItemName,
-			ViewCount:        row.ViewCount,
-			Status:           row.Status,
-			ExpiresAt:        row.ExpiresAt,
-			CreatedAt:        row.CreatedAt,
-			UpdatedAt:        row.UpdatedAt,
-			ShareURL:         buildShareURL(c, row.ShareCode),
+			ID:             row.ID,
+			ShareCode:      row.ShareCode,
+			Title:          row.Title,
+			Description:    row.Description,
+			TargetType:     row.TargetType,
+			CollectionName: row.CategoryName,
+			CollectionID:   row.CategoryID,
+			CategoryID:     row.CategoryItemID,
+			CategoryName:   row.CategoryItemName,
+			ViewCount:      row.ViewCount,
+			Status:         row.Status,
+			ExpiresAt:      row.ExpiresAt,
+			CreatedAt:      row.CreatedAt,
+			UpdatedAt:      row.UpdatedAt,
+			ShareURL:       buildShareURL(c, row.ShareCode),
 		})
 	}
 
@@ -1058,7 +1076,7 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 		result.ErrSetMsg(c, "分享内容当前不可查看")
 		return model.ShareView{}, false
 	}
-	if shareLink.TargetType == model.ShareTargetItem && shareLink.CategoryItemID != "" {
+	if shareLink.TargetType == model.ShareTargetCategory && shareLink.CategoryItemID != "" {
 		var itemRecord model.CategoryItem
 		if err := db.DB.Where("id = ?", shareLink.CategoryItemID).Take(&itemRecord).Error; err == nil {
 			item = &itemRecord
@@ -1091,13 +1109,13 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 	shareLink.ViewCount++
 
 	return model.ShareView{
-		ShareLink:     shareLink,
-		Category:      category,
-		CategoryItem:  item,
-		CategoryItems: itemList,
-		User:          user,
-		ResourceList:  resourceList,
-		ShareURL:      buildShareURL(c, shareCode),
+		ShareLink:    shareLink,
+		Collection:   category,
+		Category:     item,
+		Categories:   itemList,
+		User:         user,
+		ResourceList: resourceList,
+		ShareURL:     buildShareURL(c, shareCode),
 	}, true
 }
 
@@ -1225,7 +1243,7 @@ func shareDescription(req model.CreateShareLinkRequest, category model.Category,
 }
 
 func currentShareTitle(shareLink model.ShareLink, category model.Category, item *model.CategoryItem) string {
-	if shareLink.TargetType == model.ShareTargetItem && item != nil && strings.TrimSpace(item.Name) != "" {
+	if shareLink.TargetType == model.ShareTargetCategory && item != nil && strings.TrimSpace(item.Name) != "" {
 		return strings.TrimSpace(item.Name)
 	}
 	if strings.TrimSpace(category.Name) != "" {
@@ -1235,7 +1253,7 @@ func currentShareTitle(shareLink model.ShareLink, category model.Category, item 
 }
 
 func currentShareDescription(shareLink model.ShareLink, category model.Category, item *model.CategoryItem) string {
-	if shareLink.TargetType == model.ShareTargetItem && item != nil && strings.TrimSpace(item.Description) != "" {
+	if shareLink.TargetType == model.ShareTargetCategory && item != nil && strings.TrimSpace(item.Description) != "" {
 		return strings.TrimSpace(item.Description)
 	}
 	if strings.TrimSpace(category.Description) != "" {

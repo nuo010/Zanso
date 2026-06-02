@@ -14,9 +14,9 @@
         <p>{{ descriptionText }}</p>
       </section>
 
-      <section v-if="isCategoryShare && detail.categoryItems?.length" class="section">
+      <section v-if="isCollectionShare && detail.categories?.length" class="section">
         <div class="section-header">
-          <h2>分类项筛选</h2>
+          <h2>分类筛选</h2>
         </div>
         <el-segmented v-model="selectedFilter" :options="filterOptions" class="filter-segmented" />
       </section>
@@ -38,8 +38,8 @@
 
       <section class="meta-inline">
         <span>发布用户：{{ detail.user.name }}</span>
-        <span>所属分类：{{ detail.category.name }}</span>
-        <span>分享对象：{{ selectedCategoryItem?.name || detail.categoryItem?.name || detail.category.name }}</span>
+        <span>所属展册：{{ detail.collection.name }}</span>
+        <span>分享对象：{{ selectedCategory?.name || detail.category?.name || detail.collection.name }}</span>
         <span>浏览次数：{{ detail.shareLink.viewCount }}</span>
       </section>
     </div>
@@ -58,40 +58,36 @@ const detail = ref<any>(null);
 const errorMessage = ref('');
 const selectedFilter = ref('all');
 
-const isCategoryShare = computed(() => detail.value?.shareLink?.targetType === 'category');
-const selectedCategoryItem = computed(() => {
-  if (!detail.value?.categoryItems?.length || selectedFilter.value === 'all') return null;
-  return detail.value.categoryItems.find((item: any) => item.id === selectedFilter.value) || null;
+const isCollectionShare = computed(() => detail.value?.shareLink?.targetType === 'collection');
+const selectedCategory = computed(() => {
+  if (!detail.value?.categories?.length || selectedFilter.value === 'all') return null;
+  return detail.value.categories.find((item: any) => item.id === selectedFilter.value) || null;
 });
 const heroTitle = computed(() => {
   if (!detail.value) return '';
-  if (selectedCategoryItem.value?.name) {
-    return selectedCategoryItem.value.name;
+  if (selectedCategory.value?.name) {
+    return selectedCategory.value.name;
   }
-  return detail.value.shareLink.title || detail.value.categoryItem?.name || detail.value.category.name || '';
+  return detail.value.shareLink.title || detail.value.category?.name || detail.value.collection.name || '';
 });
 const descriptionText = computed(() => {
   if (!detail.value) return '';
-  if (selectedCategoryItem.value?.description) {
-    return selectedCategoryItem.value.description;
+  if (selectedCategory.value?.description) {
+    return selectedCategory.value.description;
   }
-  if (isCategoryShare.value) {
-    return detail.value.category.description || detail.value.shareLink.description || '暂无描述';
+  if (isCollectionShare.value) {
+    return detail.value.collection.description || detail.value.shareLink.description || '暂无描述';
   }
-  return detail.value.categoryItem?.description || detail.value.category.description || detail.value.shareLink.description || '暂无描述';
-});
-const selectedItemDescription = computed(() => {
-  if (!selectedCategoryItem.value) return '';
-  return selectedCategoryItem.value.description || '';
+  return detail.value.category?.description || detail.value.collection.description || detail.value.shareLink.description || '暂无描述';
 });
 
 const filterOptions = computed(() => {
-  if (!detail.value?.categoryItems?.length) {
+  if (!detail.value?.categories?.length) {
     return [{ label: '全部', value: 'all' }];
   }
   return [
     { label: '全部', value: 'all' },
-    ...detail.value.categoryItems.map((item: any) => ({
+    ...detail.value.categories.map((item: any) => ({
       label: item.name,
       value: item.id,
     })),
@@ -100,7 +96,7 @@ const filterOptions = computed(() => {
 
 const filteredResources = computed(() => {
   const list = detail.value?.resourceList || [];
-  if (!isCategoryShare.value) return list;
+  if (!isCollectionShare.value) return list;
   if (selectedFilter.value === 'all') return list;
   return list.filter((item: any) => item.categoryItemId === selectedFilter.value);
 });

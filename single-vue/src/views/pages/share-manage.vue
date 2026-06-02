@@ -5,17 +5,17 @@
         <div class="panel-header">
           <div>
             <h2>分享链接管理</h2>
-            <p>统一查看所有分享链接，支持按分类和分类项筛选，过期时间和访问量一眼能看明白。</p>
+            <p>统一查看所有分享链接，支持按展册和分类筛选，过期时间和访问量一眼能看明白。</p>
           </div>
         </div>
       </template>
 
       <div class="filter-bar">
-        <el-select v-model="filters.categoryId" clearable placeholder="分类" class="filter-select" @change="handleCategoryChange">
+        <el-select v-model="filters.collectionId" clearable placeholder="展册" class="filter-select" @change="handleCollectionChange">
           <el-option v-for="item in store.categories" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
-        <el-select v-model="filters.categoryItemId" clearable placeholder="分类项" class="filter-select">
-          <el-option v-for="item in categoryItemOptions" :key="item.id" :label="item.name" :value="item.id" />
+        <el-select v-model="filters.categoryId" clearable placeholder="分类" class="filter-select">
+          <el-option v-for="item in categoryOptions" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
         <el-button type="primary" @click="loadShareLinks">查询</el-button>
       </div>
@@ -26,9 +26,9 @@
             <div class="share-title-block">
               <strong>
                 {{
-                  row.targetType === 'item'
-                    ? `${row.categoryName} -> ${row.categoryItemName || '未命名分类项'}`
-                    : row.categoryName
+                  row.targetType === 'category'
+                    ? `${row.collectionName} -> ${row.categoryName || '未命名分类'}`
+                    : row.collectionName
                 }}
               </strong>
               <span>{{ row.title }}</span>
@@ -38,7 +38,7 @@
         <el-table-column label="分享类型" width="140">
           <template #default="{ row }">
             <span class="share-type-tag">
-              {{ row.targetType === 'item' ? '分类项分享' : '分类分享' }}
+              {{ row.targetType === 'category' ? '分类分享' : '展册分享' }}
             </span>
           </template>
         </el-table-column>
@@ -96,13 +96,13 @@ const qrDialogVisible = ref(false);
 const currentQrShare = ref<any>(null);
 const categoryDetailMap = reactive<Record<string, any>>({});
 const filters = reactive({
+  collectionId: '',
   categoryId: '',
-  categoryItemId: '',
 });
 
-const categoryItemOptions = computed(() => {
-  if (!filters.categoryId) return [];
-  return categoryDetailMap[filters.categoryId]?.categoryItems || [];
+const categoryOptions = computed(() => {
+  if (!filters.collectionId) return [];
+  return categoryDetailMap[filters.collectionId]?.categories || [];
 });
 
 onMounted(async () => {
@@ -112,11 +112,11 @@ onMounted(async () => {
   await loadShareLinks();
 });
 
-async function handleCategoryChange() {
-  filters.categoryItemId = '';
-  if (filters.categoryId && !categoryDetailMap[filters.categoryId]) {
-    const res = await getCategoryDetail(filters.categoryId);
-    categoryDetailMap[filters.categoryId] = res.data;
+async function handleCollectionChange() {
+  filters.categoryId = '';
+  if (filters.collectionId && !categoryDetailMap[filters.collectionId]) {
+    const res = await getCategoryDetail(filters.collectionId);
+    categoryDetailMap[filters.collectionId] = res.data;
   }
 }
 
@@ -124,8 +124,8 @@ async function loadShareLinks() {
   loading.value = true;
   try {
     const res = await getShareLinkList({
+      collectionId: filters.collectionId || undefined,
       categoryId: filters.categoryId || undefined,
-      categoryItemId: filters.categoryItemId || undefined,
     });
     shareLinks.value = res.data || [];
   } finally {

@@ -13,7 +13,7 @@
       </el-menu-item>
       <el-menu-item index="/categories">
         <el-icon><FolderOpened /></el-icon>
-        <span>分类管理</span>
+        <span>展册管理</span>
       </el-menu-item>
       <el-menu-item index="/shares">
         <el-icon><Link /></el-icon>

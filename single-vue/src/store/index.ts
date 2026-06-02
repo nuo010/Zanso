@@ -13,7 +13,7 @@ export interface PlatformUser {
   roleNames?: string[];
 }
 
-export interface CategoryItem {
+export interface Collection {
   id: string;
   name: string;
   description?: string;
@@ -35,7 +35,7 @@ export const userMainStore = defineStore('main', {
   },
   state: () => ({
     user: {} as PlatformUser,
-    categories: [] as CategoryItem[],
+    categories: [] as Collection[],
     categoryTotal: 0,
     categoryPage: 1,
     categoryPageSize: 20,

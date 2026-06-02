@@ -4,10 +4,10 @@
       <template #header>
         <div class="panel-header">
           <div>
-            <h2>分类管理</h2>
-            <p>分类和分类项都带可见性控制，分享时还能带过期时间，后台和分享治理放一块儿处理更顺手。</p>
+            <h2>展册管理</h2>
+            <p>展册下面挂分类，分类下面挂资源，分享和可见性都在一套流程里管，别再整那套“分类套分类项”的绕口令了。</p>
           </div>
-          <el-button type="primary" @click="openCreateCategoryDialog">新建分类</el-button>
+          <el-button type="primary" @click="openCreateCollectionDialog">新建展册</el-button>
         </div>
       </template>
 
@@ -16,28 +16,28 @@
         v-loading="loading"
         row-key="id"
         class="outer-table"
-        @expand-change="handleCategoryExpand"
+        @expand-change="handleCollectionExpand"
       >
         <el-table-column type="expand">
           <template #default="{ row }">
             <div class="expand-panel" v-loading="expandedLoadingMap[row.id]">
               <template v-if="expandedDetailMap[row.id]">
                 <el-table
-                  v-if="expandedDetailMap[row.id].categoryItems?.length"
-                  :data="expandedDetailMap[row.id].categoryItems"
+                  v-if="expandedDetailMap[row.id].categories?.length"
+                  :data="expandedDetailMap[row.id].categories"
                   size="small"
                   row-key="id"
                   class="inner-table"
                   :show-header="false"
-                  @expand-change="handleCategoryItemExpand"
+                  @expand-change="handleInnerCategoryExpand"
                 >
                   <el-table-column type="expand">
-                    <template #default="{ row: itemRow }">
-                      <div class="resource-panel" v-loading="itemLoadingMap[itemRow.id]">
-                        <template v-if="expandedItemDetailMap[itemRow.id]">
-                          <div v-if="expandedItemDetailMap[itemRow.id].resourceList?.length" class="resource-grid">
+                    <template #default="{ row: categoryRow }">
+                      <div class="resource-panel" v-loading="itemLoadingMap[categoryRow.id]">
+                        <template v-if="expandedItemDetailMap[categoryRow.id]">
+                          <div v-if="expandedItemDetailMap[categoryRow.id].resourceList?.length" class="resource-grid">
                             <div
-                              v-for="resource in expandedItemDetailMap[itemRow.id].resourceList"
+                              v-for="resource in expandedItemDetailMap[categoryRow.id].resourceList"
                               :key="resource.id"
                               class="resource-card"
                             >
@@ -62,7 +62,7 @@
                                   <el-button
                                     link
                                     type="danger"
-                                    @click="confirmDeleteResource(resource.resourceId, itemRow.categoryId, itemRow.id)"
+                                    @click="confirmDeleteResource(resource.resourceId, categoryRow.categoryId, categoryRow.id)"
                                   >
                                     删除资源
                                   </el-button>
@@ -70,7 +70,7 @@
                               </div>
                             </div>
                           </div>
-                          <el-empty v-else description="这个分类项还没有关联资源" />
+                          <el-empty v-else description="这个分类下还没有关联资源" />
                         </template>
                       </div>
                     </template>
@@ -78,52 +78,56 @@
                   <el-table-column prop="name" min-width="220" />
                   <el-table-column prop="description" min-width="240" />
                   <el-table-column label="展示" width="120" align="center">
-                    <template #default="{ row: itemRow }">
+                    <template #default="{ row: categoryRow }">
                       <el-switch
-                        :model-value="itemRow.visible"
+                        :model-value="categoryRow.visible"
                         inline-prompt
                         active-text="可看"
                         inactive-text="隐藏"
-                        @change="handleToggleCategoryItemVisible(itemRow, $event)"
+                        @change="handleToggleInnerCategoryVisible(categoryRow, $event)"
                       />
                     </template>
                   </el-table-column>
                   <el-table-column width="360" align="right">
-                    <template #default="{ row: itemRow }">
+                    <template #default="{ row: categoryRow }">
                       <div class="row-actions">
-                        <el-button link type="primary" @click="openUploadDialog(itemRow.categoryId, itemRow.id)">上传资源</el-button>
-                        <el-button link type="primary" @click="openEditItemDialog(itemRow)">修改</el-button>
-                        <el-button link type="warning" @click="openShareDialog('item', itemRow.categoryId, itemRow.id, itemRow.name, itemRow.description)">
-                          分享分类项
+                        <el-button link type="primary" @click="openUploadDialog(categoryRow.categoryId, categoryRow.id)">上传资源</el-button>
+                        <el-button link type="primary" @click="openEditInnerCategoryDialog(categoryRow)">修改</el-button>
+                        <el-button
+                          link
+                          type="warning"
+                          @click="openShareDialog('category', categoryRow.categoryId, categoryRow.id, categoryRow.name, categoryRow.description)"
+                        >
+                          分享分类
                         </el-button>
-                        <el-button link type="danger" @click="confirmDeleteCategoryItem(itemRow.id, itemRow.categoryId)">
+                        <el-button link type="danger" @click="confirmDeleteInnerCategory(categoryRow.id, categoryRow.categoryId)">
                           删除
                         </el-button>
                       </div>
                     </template>
                   </el-table-column>
                 </el-table>
-                <div v-if="expandedDetailMap[row.id].itemTotal > pageSize" class="inner-pagination">
+                <div v-if="expandedDetailMap[row.id].total > pageSize" class="inner-pagination">
                   <el-pagination
                     small
                     background
                     layout="total, prev, pager, next"
                     :page-size="pageSize"
-                    :total="expandedDetailMap[row.id].itemTotal"
-                    :current-page="expandedDetailMap[row.id].itemPage || 1"
-                    @current-change="handleCategoryItemPageChange(row.id, $event)"
+                    :total="expandedDetailMap[row.id].total"
+                    :current-page="expandedDetailMap[row.id].page || 1"
+                    @current-change="handleInnerCategoryPageChange(row.id, $event)"
                   />
                 </div>
                 <el-empty
-                  v-if="!expandedDetailMap[row.id].categoryItems?.length"
-                  description="当前分类下还没有分类项"
+                  v-if="!expandedDetailMap[row.id].categories?.length"
+                  description="当前展册下还没有分类"
                 />
               </template>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="name" label="分类名称" min-width="220" />
+        <el-table-column prop="name" label="展册名称" min-width="220" />
         <el-table-column prop="description" label="描述" min-width="260" />
         <el-table-column label="展示" width="140" align="center">
           <template #default="{ row }">
@@ -132,17 +136,17 @@
               inline-prompt
               active-text="可看"
               inactive-text="隐藏"
-              @change="handleToggleCategoryVisible(row, $event)"
+              @change="handleToggleCollectionVisible(row, $event)"
             />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="340" align="right">
           <template #default="{ row }">
             <div class="row-actions">
-              <el-button link type="primary" @click="openCreateItemDialog(row)">新建分类项</el-button>
-              <el-button link type="primary" @click="openEditCategoryDialog(row)">修改描述</el-button>
-              <el-button link type="warning" @click="openShareDialog('category', row.id, '', row.name, row.description)">分享分类</el-button>
-              <el-button link type="danger" @click="confirmDeleteCategory(row.id)">删除</el-button>
+              <el-button link type="primary" @click="openCreateInnerCategoryDialog(row)">新建分类</el-button>
+              <el-button link type="primary" @click="openEditCollectionDialog(row)">修改描述</el-button>
+              <el-button link type="warning" @click="openShareDialog('collection', row.id, '', row.name, row.description)">分享展册</el-button>
+              <el-button link type="danger" @click="confirmDeleteCollection(row.id)">删除</el-button>
             </div>
           </template>
         </el-table-column>
@@ -155,15 +159,15 @@
           :page-size="pageSize"
           :total="store.categoryTotal"
           :current-page="store.categoryPage"
-          @current-change="handleCategoryPageChange"
+          @current-change="handleCollectionPageChange"
         />
       </div>
     </el-card>
 
-    <el-dialog v-model="createCategoryDialogVisible" title="新建分类" width="460px">
+    <el-dialog v-model="createCategoryDialogVisible" title="新建展册" width="460px">
       <el-form :model="categoryForm" label-position="top">
-        <el-form-item label="分类名称">
-          <el-input v-model="categoryForm.name" placeholder="直接输入分类名称" />
+        <el-form-item label="展册名称">
+          <el-input v-model="categoryForm.name" placeholder="直接输入展册名称" />
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="categoryForm.description" type="textarea" :rows="4" />
@@ -174,13 +178,13 @@
       </el-form>
       <template #footer>
         <el-button @click="createCategoryDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submittingCategory" @click="handleCreateCategory">保存</el-button>
+        <el-button type="primary" :loading="submittingCategory" @click="handleCreateCollection">保存</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="editCategoryDialogVisible" title="修改分类描述" width="460px">
+    <el-dialog v-model="editCategoryDialogVisible" title="修改展册描述" width="460px">
       <el-form :model="editCategoryForm" label-position="top">
-        <el-form-item label="分类名称">
+        <el-form-item label="展册名称">
           <el-input :model-value="editCategoryForm.name" disabled />
         </el-form-item>
         <el-form-item label="描述">
@@ -189,21 +193,21 @@
       </el-form>
       <template #footer>
         <el-button @click="editCategoryDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submittingCategory" @click="handleUpdateCategoryDescription">保存</el-button>
+        <el-button type="primary" :loading="submittingCategory" @click="handleUpdateCollectionDescription">保存</el-button>
       </template>
     </el-dialog>
 
     <el-dialog
       v-model="categoryItemDialogVisible"
-      :title="categoryItemDialogMode === 'edit' ? '修改分类项' : '新建分类项'"
+      :title="categoryItemDialogMode === 'edit' ? '修改分类' : '新建分类'"
       width="460px"
     >
       <el-form :model="categoryItemForm" label-position="top">
-        <el-form-item label="所属分类">
+        <el-form-item label="所属展册">
           <el-input :model-value="categoryItemParentName" disabled />
         </el-form-item>
-        <el-form-item label="分类项名称">
-          <el-input v-model="categoryItemForm.name" placeholder="直接输入分类项名称" />
+        <el-form-item label="分类名称">
+          <el-input v-model="categoryItemForm.name" placeholder="直接输入分类名称" />
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="categoryItemForm.description" type="textarea" :rows="4" />
@@ -214,11 +218,15 @@
       </el-form>
       <template #footer>
         <el-button @click="categoryItemDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submittingCategoryItem" @click="handleSubmitCategoryItem">保存</el-button>
+        <el-button type="primary" :loading="submittingCategoryItem" @click="handleSubmitInnerCategory">保存</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="shareDialogVisible" :title="shareForm.targetType === 'item' ? '分享分类项' : '分享分类'" width="460px">
+    <el-dialog
+      v-model="shareDialogVisible"
+      :title="shareForm.targetType === 'category' ? '分享分类' : '分享展册'"
+      width="460px"
+    >
       <el-form :model="shareForm" label-position="top">
         <el-form-item label="分享标题">
           <el-input v-model="shareForm.title" />
@@ -242,7 +250,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="uploadDialogVisible" :title="uploadTargetItemId ? '上传分类项资源' : '上传分类资源'" width="460px">
+    <el-dialog v-model="uploadDialogVisible" title="上传分类资源" width="460px">
       <el-upload drag :auto-upload="false" :limit="1" :on-change="handleFileChange">
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div>拖拽文件到这里，或者点击选择</div>
@@ -310,8 +318,8 @@ const editCategoryForm = reactive({
 
 const categoryItemForm = reactive({
   id: '',
-  categoryId: '',
-  categoryName: '',
+  collectionId: '',
+  collectionName: '',
   name: '',
   description: '',
   visible: true,
@@ -319,16 +327,16 @@ const categoryItemForm = reactive({
 });
 
 const shareForm = reactive({
-  targetType: 'category' as 'category' | 'item',
+  targetType: 'collection' as 'collection' | 'category',
+  collectionId: '',
   categoryId: '',
-  categoryItemId: '',
   title: '',
   description: '',
   expiresAt: '',
 });
 
+const uploadTargetCollectionId = ref('');
 const uploadTargetCategoryId = ref('');
-const uploadTargetItemId = ref('');
 const selectedFile = ref<File | null>(null);
 const categoryItemParentName = ref('');
 
@@ -343,76 +351,76 @@ async function refreshList() {
 
 refreshList();
 
-function openCreateCategoryDialog() {
+function openCreateCollectionDialog() {
   categoryForm.name = '';
   categoryForm.description = '';
   categoryForm.visible = true;
   createCategoryDialogVisible.value = true;
 }
 
-function openEditCategoryDialog(category: any) {
-  editCategoryForm.id = category.id;
-  editCategoryForm.name = category.name;
-  editCategoryForm.description = category.description || '';
-  editCategoryForm.visible = category.visible !== false;
-  editCategoryForm.status = category.status || 'active';
+function openEditCollectionDialog(collection: any) {
+  editCategoryForm.id = collection.id;
+  editCategoryForm.name = collection.name;
+  editCategoryForm.description = collection.description || '';
+  editCategoryForm.visible = collection.visible !== false;
+  editCategoryForm.status = collection.status || 'active';
   editCategoryDialogVisible.value = true;
 }
 
-function openCreateItemDialog(category: any) {
+function openCreateInnerCategoryDialog(collection: any) {
   categoryItemDialogMode.value = 'create';
   categoryItemForm.id = '';
-  categoryItemForm.categoryId = category.id;
-  categoryItemForm.categoryName = category.name;
+  categoryItemForm.collectionId = collection.id;
+  categoryItemForm.collectionName = collection.name;
   categoryItemForm.name = '';
   categoryItemForm.description = '';
   categoryItemForm.visible = true;
   categoryItemForm.status = 'active';
-  categoryItemParentName.value = category.name;
+  categoryItemParentName.value = collection.name;
   categoryItemDialogVisible.value = true;
 }
 
-function openEditItemDialog(item: any) {
+function openEditInnerCategoryDialog(category: any) {
   categoryItemDialogMode.value = 'edit';
-  categoryItemForm.id = item.id;
-  categoryItemForm.categoryId = item.categoryId;
-  categoryItemForm.categoryName = findCategoryName(item.categoryId);
-  categoryItemForm.name = item.name;
-  categoryItemForm.description = item.description || '';
-  categoryItemForm.visible = item.visible !== false;
-  categoryItemForm.status = item.status || 'active';
-  categoryItemParentName.value = categoryItemForm.categoryName;
+  categoryItemForm.id = category.id;
+  categoryItemForm.collectionId = category.categoryId;
+  categoryItemForm.collectionName = findCollectionName(category.categoryId);
+  categoryItemForm.name = category.name;
+  categoryItemForm.description = category.description || '';
+  categoryItemForm.visible = category.visible !== false;
+  categoryItemForm.status = category.status || 'active';
+  categoryItemParentName.value = categoryItemForm.collectionName;
   categoryItemDialogVisible.value = true;
 }
 
 function openShareDialog(
-  targetType: 'category' | 'item',
+  targetType: 'collection' | 'category',
+  collectionId: string,
   categoryId: string,
-  categoryItemId: string,
   title: string,
   description?: string
 ) {
   shareForm.targetType = targetType;
+  shareForm.collectionId = collectionId;
   shareForm.categoryId = categoryId;
-  shareForm.categoryItemId = categoryItemId;
   shareForm.title = title || '';
   shareForm.description = description || '';
   shareForm.expiresAt = '';
   shareDialogVisible.value = true;
 }
 
-function findCategoryName(categoryId: string) {
-  return store.categories.find((item: any) => item.id === categoryId)?.name || '';
+function findCollectionName(collectionId: string) {
+  return store.categories.find((item: any) => item.id === collectionId)?.name || '';
 }
 
-async function handleCreateCategory() {
+async function handleCreateCollection() {
   const name = categoryForm.name.trim();
   if (!name) {
-    toast('分类名称不能为空', 'warning');
+    toast('展册名称不能为空', 'warning');
     return;
   }
   if (store.categories.some((item: any) => item.name === name)) {
-    toast('分类名称不能重复', 'warning');
+    toast('展册名称不能重复', 'warning');
     return;
   }
 
@@ -424,7 +432,7 @@ async function handleCreateCategory() {
       visible: categoryForm.visible,
       status: 'active',
     });
-    toast('分类创建成功', 'success');
+    toast('展册创建成功', 'success');
     createCategoryDialogVisible.value = false;
     store.categoryPage = 1;
     await refreshList();
@@ -433,17 +441,17 @@ async function handleCreateCategory() {
   }
 }
 
-async function handleSubmitCategoryItem() {
+async function handleSubmitInnerCategory() {
   const name = categoryItemForm.name.trim();
-  if (!categoryItemForm.categoryId || !name) {
-    toast('分类项名称不能为空', 'warning');
+  if (!categoryItemForm.collectionId || !name) {
+    toast('分类名称不能为空', 'warning');
     return;
   }
 
-  const currentItems = expandedDetailMap[categoryItemForm.categoryId]?.categoryItems || [];
+  const currentItems = expandedDetailMap[categoryItemForm.collectionId]?.categories || [];
   const duplicate = currentItems.some((item: any) => item.name === name && item.id !== categoryItemForm.id);
   if (duplicate) {
-    toast('分类项名称不能重复', 'warning');
+    toast('分类名称不能重复', 'warning');
     return;
   }
 
@@ -456,25 +464,25 @@ async function handleSubmitCategoryItem() {
         visible: categoryItemForm.visible,
         status: categoryItemForm.status,
       });
-      toast('分类项修改成功', 'success');
+      toast('分类修改成功', 'success');
     } else {
       await createCategoryItem({
-        categoryId: categoryItemForm.categoryId,
+        collectionId: categoryItemForm.collectionId,
         name,
         description: categoryItemForm.description.trim(),
         visible: categoryItemForm.visible,
         status: 'active',
       });
-      toast('分类项创建成功', 'success');
+      toast('分类创建成功', 'success');
     }
     categoryItemDialogVisible.value = false;
-    await loadCategoryDetail(categoryItemForm.categoryId, expandedDetailMap[categoryItemForm.categoryId]?.itemPage || 1);
+    await loadCollectionDetail(categoryItemForm.collectionId, expandedDetailMap[categoryItemForm.collectionId]?.page || 1);
   } finally {
     submittingCategoryItem.value = false;
   }
 }
 
-async function handleUpdateCategoryDescription() {
+async function handleUpdateCollectionDescription() {
   if (!editCategoryForm.id) return;
   submittingCategory.value = true;
   try {
@@ -484,13 +492,13 @@ async function handleUpdateCategoryDescription() {
       visible: editCategoryForm.visible,
       status: editCategoryForm.status,
     });
-    toast('分类描述修改成功', 'success');
+    toast('展册描述修改成功', 'success');
     editCategoryDialogVisible.value = false;
     const target = store.categories.find((item: any) => item.id === editCategoryForm.id);
     if (target) {
       target.description = editCategoryForm.description.trim();
     }
-    await loadCategoryDetail(editCategoryForm.id, expandedDetailMap[editCategoryForm.id]?.itemPage || 1);
+    await loadCollectionDetail(editCategoryForm.id, expandedDetailMap[editCategoryForm.id]?.page || 1);
   } finally {
     submittingCategory.value = false;
   }
@@ -500,8 +508,8 @@ async function handleSubmitShare() {
   submittingShare.value = true;
   try {
     const res = await createShareLink({
-      categoryId: shareForm.categoryId,
-      categoryItemId: shareForm.categoryItemId || undefined,
+      collectionId: shareForm.collectionId,
+      categoryId: shareForm.categoryId || undefined,
       targetType: shareForm.targetType,
       title: shareForm.title.trim(),
       description: shareForm.description.trim(),
@@ -514,7 +522,7 @@ async function handleSubmitShare() {
   }
 }
 
-async function loadCategoryDetail(id: string, page = 1) {
+async function loadCollectionDetail(id: string, page = 1) {
   expandedLoadingMap[id] = true;
   try {
     const res = await getCategoryDetail(id, { page, pageSize });
@@ -524,7 +532,7 @@ async function loadCategoryDetail(id: string, page = 1) {
   }
 }
 
-async function loadCategoryItemDetail(id: string) {
+async function loadInnerCategoryDetail(id: string) {
   itemLoadingMap[id] = true;
   try {
     const res = await getCategoryItemDetail(id);
@@ -544,19 +552,19 @@ function normalizeResourceList(resourceList: any[]) {
   }));
 }
 
-function handleCategoryExpand(row: any, expandedRows: any[]) {
+function handleCollectionExpand(row: any, expandedRows: any[]) {
   if (expandedRows.some((item) => item.id === row.id)) {
-    loadCategoryDetail(row.id, expandedDetailMap[row.id]?.itemPage || 1);
+    loadCollectionDetail(row.id, expandedDetailMap[row.id]?.page || 1);
   }
 }
 
-function handleCategoryItemExpand(row: any, expandedRows: any[]) {
+function handleInnerCategoryExpand(row: any, expandedRows: any[]) {
   if (expandedRows.some((item) => item.id === row.id)) {
-    loadCategoryItemDetail(row.id);
+    loadInnerCategoryDetail(row.id);
   }
 }
 
-async function handleToggleCategoryVisible(row: any, value: boolean) {
+async function handleToggleCollectionVisible(row: any, value: boolean) {
   await updateCategory(row.id, {
     name: row.name,
     description: row.description,
@@ -568,10 +576,10 @@ async function handleToggleCategoryVisible(row: any, value: boolean) {
   if (target) {
     target.visible = value;
   }
-  toast(`分类已切换为${value ? '可看' : '不可看'}`, 'success');
+  toast(`展册已切换为${value ? '可看' : '不可看'}`, 'success');
 }
 
-async function handleToggleCategoryItemVisible(row: any, value: boolean) {
+async function handleToggleInnerCategoryVisible(row: any, value: boolean) {
   await updateCategoryItem(row.id, {
     name: row.name,
     description: row.description,
@@ -579,12 +587,12 @@ async function handleToggleCategoryItemVisible(row: any, value: boolean) {
     status: row.status,
   });
   row.visible = value;
-  toast(`分类项已切换为${value ? '可看' : '不可看'}`, 'success');
+  toast(`分类已切换为${value ? '可看' : '不可看'}`, 'success');
 }
 
-function openUploadDialog(categoryId: string, categoryItemId: string) {
+function openUploadDialog(collectionId: string, categoryId: string) {
+  uploadTargetCollectionId.value = collectionId;
   uploadTargetCategoryId.value = categoryId;
-  uploadTargetItemId.value = categoryItemId;
   selectedFile.value = null;
   uploadDialogVisible.value = true;
 }
@@ -594,8 +602,8 @@ function handleFileChange(file: any) {
 }
 
 async function submitUpload() {
-  if (!uploadTargetCategoryId.value || !uploadTargetItemId.value) {
-    toast('只能给分类项上传资源', 'warning');
+  if (!uploadTargetCollectionId.value || !uploadTargetCategoryId.value) {
+    toast('只能给分类上传资源', 'warning');
     return;
   }
   if (!selectedFile.value) {
@@ -605,46 +613,46 @@ async function submitUpload() {
 
   const formData = new FormData();
   formData.append('file', selectedFile.value);
-  formData.append('categoryItemId', uploadTargetItemId.value);
+  formData.append('categoryItemId', uploadTargetCategoryId.value);
 
   uploading.value = true;
   try {
-    await uploadCategoryResource(uploadTargetCategoryId.value, formData);
+    await uploadCategoryResource(uploadTargetCollectionId.value, formData);
     toast('资源上传成功', 'success');
     uploadDialogVisible.value = false;
-    await loadCategoryDetail(uploadTargetCategoryId.value, expandedDetailMap[uploadTargetCategoryId.value]?.itemPage || 1);
-    await loadCategoryItemDetail(uploadTargetItemId.value);
+    await loadCollectionDetail(uploadTargetCollectionId.value, expandedDetailMap[uploadTargetCollectionId.value]?.page || 1);
+    await loadInnerCategoryDetail(uploadTargetCategoryId.value);
   } finally {
     uploading.value = false;
   }
 }
 
-async function confirmDeleteCategory(categoryId: string) {
-  await confirmAction('删除后该分类下的分类项、资源和分享链接都会一起删除，确认继续？');
-  await deleteCategory(categoryId);
-  toast('分类已删除', 'success');
-  delete expandedDetailMap[categoryId];
+async function confirmDeleteCollection(collectionId: string) {
+  await confirmAction('删除后该展册下的分类、资源和分享链接都会一起删除，确认继续？');
+  await deleteCategory(collectionId);
+  toast('展册已删除', 'success');
+  delete expandedDetailMap[collectionId];
   if (store.categories.length === 1 && store.categoryPage > 1) {
     store.categoryPage -= 1;
   }
   await refreshList();
 }
 
-async function confirmDeleteCategoryItem(itemId: string, categoryId: string) {
-  await confirmAction('删除后该分类项下的资源和分享链接都会一起删除，确认继续？');
-  await deleteCategoryItem(itemId);
-  toast('分类项已删除', 'success');
-  delete expandedItemDetailMap[itemId];
-  const currentPage = expandedDetailMap[categoryId]?.itemPage || 1;
-  await loadCategoryDetail(categoryId, currentPage);
+async function confirmDeleteInnerCategory(categoryId: string, collectionId: string) {
+  await confirmAction('删除后该分类下的资源和分享链接都会一起删除，确认继续？');
+  await deleteCategoryItem(categoryId);
+  toast('分类已删除', 'success');
+  delete expandedItemDetailMap[categoryId];
+  const currentPage = expandedDetailMap[collectionId]?.page || 1;
+  await loadCollectionDetail(collectionId, currentPage);
 }
 
-async function confirmDeleteResource(resourceId: string, categoryId: string, itemId: string) {
+async function confirmDeleteResource(resourceId: string, collectionId: string, categoryId: string) {
   await confirmAction('删除资源后不可恢复，确认继续？');
   await deleteResource(resourceId);
   toast('资源已删除', 'success');
-  await loadCategoryDetail(categoryId, expandedDetailMap[categoryId]?.itemPage || 1);
-  await loadCategoryItemDetail(itemId);
+  await loadCollectionDetail(collectionId, expandedDetailMap[collectionId]?.page || 1);
+  await loadInnerCategoryDetail(categoryId);
 }
 
 async function confirmAction(message: string) {
@@ -655,13 +663,13 @@ async function confirmAction(message: string) {
   });
 }
 
-function handleCategoryPageChange(page: number) {
+function handleCollectionPageChange(page: number) {
   store.categoryPage = page;
   refreshList();
 }
 
-function handleCategoryItemPageChange(categoryId: string, page: number) {
-  loadCategoryDetail(categoryId, page);
+function handleInnerCategoryPageChange(collectionId: string, page: number) {
+  loadCollectionDetail(collectionId, page);
 }
 </script>
 

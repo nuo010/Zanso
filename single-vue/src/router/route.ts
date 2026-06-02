@@ -13,7 +13,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/categories',
-        meta: { title: '分类管理' },
+        meta: { title: '展册管理' },
         component: () => import('@/views/pages/zhome.vue'),
       },
       {

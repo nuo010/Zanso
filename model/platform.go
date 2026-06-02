@@ -12,6 +12,7 @@ const (
 	CategoryItemStatusActive = "active"
 	ShareStatusActive        = "active"
 	ResourceStatusActive     = "active"
+	ShareTargetCollection    = "collection"
 	ShareTargetCategory      = "category"
 	ShareTargetItem          = "item"
 )
@@ -199,7 +200,8 @@ type UpdateCategoryRequest struct {
 }
 
 type CreateCategoryItemRequest struct {
-	CategoryID  string `json:"categoryId"`
+	CategoryID  string `json:"collectionId"`
+	ParentID    string `json:"categoryId"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	CoverURL    string `json:"coverUrl"`
@@ -215,23 +217,24 @@ type UpdateCategoryItemRequest struct {
 }
 
 type CreateShareLinkRequest struct {
-	CategoryID     string     `json:"categoryId"`
-	CategoryItemID string     `json:"categoryItemId"`
-	TargetType     string     `json:"targetType"`
-	Title          string     `json:"title"`
-	Description    string     `json:"description"`
-	ExpiresAt      *time.Time `json:"expiresAt"`
+	CollectionID string     `json:"collectionId"`
+	CategoryID   string     `json:"categoryId"`
+	LegacyItemID string     `json:"categoryItemId"`
+	TargetType   string     `json:"targetType"`
+	Title        string     `json:"title"`
+	Description  string     `json:"description"`
+	ExpiresAt    *time.Time `json:"expiresAt"`
 }
 
 type CategoryDetail struct {
-	Category      Category                   `json:"category"`
-	User          User                       `json:"user"`
-	CategoryItems []CategoryItem             `json:"categoryItems"`
-	ItemTotal     int64                      `json:"itemTotal"`
-	ItemPage      int                        `json:"itemPage"`
-	ItemPageSize  int                        `json:"itemPageSize"`
-	ResourceList  []CategoryResourceRelation `json:"resourceList"`
-	ShareLinks    []ShareLink                `json:"shareLinks,omitempty"`
+	Collection   Category                   `json:"collection"`
+	User         User                       `json:"user"`
+	Categories   []CategoryItem             `json:"categories"`
+	Total        int64                      `json:"total"`
+	Page         int                        `json:"page"`
+	PageSize     int                        `json:"pageSize"`
+	ResourceList []CategoryResourceRelation `json:"resourceList"`
+	ShareLinks   []ShareLink                `json:"shareLinks,omitempty"`
 }
 
 type PageResult struct {
@@ -255,31 +258,31 @@ type UserWithRoles struct {
 }
 
 type ShareLinkListItem struct {
-	ID               string     `json:"id"`
-	ShareCode        string     `json:"shareCode"`
-	Title            string     `json:"title"`
-	Description      string     `json:"description"`
-	TargetType       string     `json:"targetType"`
-	CategoryID       string     `json:"categoryId"`
-	CategoryName     string     `json:"categoryName"`
-	CategoryItemID   string     `json:"categoryItemId"`
-	CategoryItemName string     `json:"categoryItemName"`
-	ViewCount        int64      `json:"viewCount"`
-	Status           string     `json:"status"`
-	ExpiresAt        *time.Time `json:"expiresAt"`
-	CreatedAt        time.Time  `json:"createdAt"`
-	UpdatedAt        time.Time  `json:"updatedAt"`
-	ShareURL         string     `json:"shareUrl"`
+	ID             string     `json:"id"`
+	ShareCode      string     `json:"shareCode"`
+	Title          string     `json:"title"`
+	Description    string     `json:"description"`
+	TargetType     string     `json:"targetType"`
+	CollectionID   string     `json:"collectionId"`
+	CollectionName string     `json:"collectionName"`
+	CategoryID     string     `json:"categoryId"`
+	CategoryName   string     `json:"categoryName"`
+	ViewCount      int64      `json:"viewCount"`
+	Status         string     `json:"status"`
+	ExpiresAt      *time.Time `json:"expiresAt"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
+	ShareURL       string     `json:"shareUrl"`
 }
 
 type ShareView struct {
-	ShareLink     ShareLink                  `json:"shareLink"`
-	Category      Category                   `json:"category"`
-	CategoryItem  *CategoryItem              `json:"categoryItem,omitempty"`
-	CategoryItems []CategoryItem             `json:"categoryItems,omitempty"`
-	User          User                       `json:"user"`
-	ResourceList  []CategoryResourceRelation `json:"resourceList"`
-	ShareURL      string                     `json:"shareUrl"`
+	ShareLink    ShareLink                  `json:"shareLink"`
+	Collection   Category                   `json:"collection"`
+	Category     *CategoryItem              `json:"category,omitempty"`
+	Categories   []CategoryItem             `json:"categories,omitempty"`
+	User         User                       `json:"user"`
+	ResourceList []CategoryResourceRelation `json:"resourceList"`
+	ShareURL     string                     `json:"shareUrl"`
 }
 
 type UserAuthResponse struct {
