@@ -3,18 +3,17 @@ package model
 import "time"
 
 const (
-	UserStatusActive         = "active"
-	RoleCodeAdmin            = "admin"
-	RoleCodeUser             = "user"
-	CategoryStatusDraft      = "draft"
-	CategoryStatusActive     = "active"
-	CategoryItemStatusDraft  = "draft"
-	CategoryItemStatusActive = "active"
-	ShareStatusActive        = "active"
-	ResourceStatusActive     = "active"
-	ShareTargetCollection    = "collection"
-	ShareTargetCategory      = "category"
-	ShareTargetItem          = "item"
+	UserStatusActive          = "active"
+	RoleCodeAdmin             = "admin"
+	RoleCodeUser              = "user"
+	CategoryStatusDraft       = "draft"
+	CategoryStatusActive      = "active"
+	InnerCategoryStatusDraft  = "draft"
+	InnerCategoryStatusActive = "active"
+	ShareStatusActive         = "active"
+	ResourceStatusActive      = "active"
+	ShareTargetCollection     = "collection"
+	ShareTargetCategory       = "category"
 )
 
 type User struct {
@@ -71,13 +70,13 @@ type Category struct {
 }
 
 func (Category) TableName() string {
-	return "tbl_category"
+	return "tbl_collection"
 }
 
 type CategoryItem struct {
 	ID          string    `json:"id" gorm:"primarykey;size:32"`
 	UserID      string    `json:"userId" gorm:"size:32;index;not null"`
-	CategoryID  string    `json:"categoryId" gorm:"size:32;index;not null"`
+	CategoryID  string    `json:"categoryId" gorm:"column:collection_id;size:32;index;not null"`
 	Name        string    `json:"name" gorm:"size:160;not null"`
 	Description string    `json:"description" gorm:"type:text"`
 	CoverURL    string    `json:"coverUrl" gorm:"size:512"`
@@ -88,7 +87,7 @@ type CategoryItem struct {
 }
 
 func (CategoryItem) TableName() string {
-	return "tbl_category_item"
+	return "tbl_category"
 }
 
 type Resource struct {
@@ -113,8 +112,8 @@ func (Resource) TableName() string {
 type CategoryResourceRelation struct {
 	ID             string    `json:"id" gorm:"primarykey;size:32"`
 	UserID         string    `json:"userId" gorm:"size:32;index;not null"`
-	CategoryID     string    `json:"categoryId" gorm:"size:32;index;not null"`
-	CategoryItemID string    `json:"categoryItemId" gorm:"size:32;index"`
+	CategoryID     string    `json:"collectionId" gorm:"column:collection_id;size:32;index;not null"`
+	CategoryItemID string    `json:"categoryId" gorm:"column:category_id;size:32;index"`
 	ResourceID     string    `json:"resourceId" gorm:"size:32;index;not null"`
 	ResourceType   string    `json:"resourceType" gorm:"size:32;not null"`
 	FileName       string    `json:"fileName" gorm:"size:255"`
@@ -127,15 +126,15 @@ type CategoryResourceRelation struct {
 }
 
 func (CategoryResourceRelation) TableName() string {
-	return "tbl_category_resource_relation"
+	return "tbl_collection_resource_relation"
 }
 
 type ShareLink struct {
 	ID             string     `json:"id" gorm:"primarykey;size:32"`
 	UserID         string     `json:"userId" gorm:"size:32;index;not null"`
-	CategoryID     string     `json:"categoryId" gorm:"size:32;index;not null"`
-	CategoryItemID string     `json:"categoryItemId" gorm:"size:32;index"`
-	TargetType     string     `json:"targetType" gorm:"size:32;index;not null;default:category"`
+	CategoryID     string     `json:"collectionId" gorm:"column:collection_id;size:32;index;not null"`
+	CategoryItemID string     `json:"categoryId" gorm:"column:category_id;size:32;index"`
+	TargetType     string     `json:"targetType" gorm:"size:32;index;not null;default:collection"`
 	ShareCode      string     `json:"shareCode" gorm:"size:32;uniqueIndex;not null"`
 	Title          string     `json:"title" gorm:"size:160"`
 	Description    string     `json:"description" gorm:"type:text"`
@@ -153,8 +152,8 @@ func (ShareLink) TableName() string {
 type ShareViewLog struct {
 	ID             string    `json:"id" gorm:"primarykey;size:32"`
 	ShareLinkID    string    `json:"shareLinkId" gorm:"size:32;index;not null"`
-	CategoryID     string    `json:"categoryId" gorm:"size:32;index;not null"`
-	CategoryItemID string    `json:"categoryItemId" gorm:"size:32;index"`
+	CategoryID     string    `json:"collectionId" gorm:"column:collection_id;size:32;index;not null"`
+	CategoryItemID string    `json:"categoryId" gorm:"column:category_id;size:32;index"`
 	TargetType     string    `json:"targetType" gorm:"size:32;index;not null"`
 	UserID         string    `json:"userId" gorm:"size:32;index;not null"`
 	ViewerIP       string    `json:"viewerIp" gorm:"size:64"`
@@ -201,7 +200,6 @@ type UpdateCategoryRequest struct {
 
 type CreateCategoryItemRequest struct {
 	CategoryID  string `json:"collectionId"`
-	ParentID    string `json:"categoryId"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	CoverURL    string `json:"coverUrl"`
@@ -219,7 +217,6 @@ type UpdateCategoryItemRequest struct {
 type CreateShareLinkRequest struct {
 	CollectionID string     `json:"collectionId"`
 	CategoryID   string     `json:"categoryId"`
-	LegacyItemID string     `json:"categoryItemId"`
 	TargetType   string     `json:"targetType"`
 	Title        string     `json:"title"`
 	Description  string     `json:"description"`

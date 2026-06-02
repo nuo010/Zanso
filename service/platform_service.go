@@ -375,9 +375,6 @@ func CreateCategoryItem(c *gin.Context) {
 		return
 	}
 	collectionID := strings.TrimSpace(req.CategoryID)
-	if collectionID == "" {
-		collectionID = strings.TrimSpace(req.ParentID)
-	}
 	if collectionID == "" || strings.TrimSpace(req.Name) == "" {
 		result.ErrSetMsg(c, "展册 ID 和分类名称不能为空")
 		return
@@ -395,7 +392,7 @@ func CreateCategoryItem(c *gin.Context) {
 
 	status := strings.TrimSpace(req.Status)
 	if status == "" {
-		status = model.CategoryItemStatusDraft
+		status = model.InnerCategoryStatusDraft
 	}
 	visible := true
 	if req.Visible != nil {
@@ -503,24 +500,24 @@ func DeleteCategory(c *gin.Context) {
 	resourcePaths, _ := collectCategoryResourcePaths(categoryID, "")
 	if err := db.DB.Transaction(func(tx *gorm.DB) error {
 		var itemIDs []string
-		if err := tx.Model(&model.CategoryItem{}).Where("category_id = ? AND user_id = ?", categoryID, currentUserID).Pluck("id", &itemIDs).Error; err != nil {
+		if err := tx.Model(&model.CategoryItem{}).Where("collection_id = ? AND user_id = ?", categoryID, currentUserID).Pluck("id", &itemIDs).Error; err != nil {
 			return err
 		}
 		if len(itemIDs) > 0 {
-			if err := tx.Where("category_item_id IN ?", itemIDs).Delete(&model.ShareLink{}).Error; err != nil {
+			if err := tx.Where("category_id IN ?", itemIDs).Delete(&model.ShareLink{}).Error; err != nil {
 				return err
 			}
-			if err := tx.Where("category_item_id IN ?", itemIDs).Delete(&model.ShareViewLog{}).Error; err != nil {
+			if err := tx.Where("category_id IN ?", itemIDs).Delete(&model.ShareViewLog{}).Error; err != nil {
 				return err
 			}
 		}
-		if err := tx.Where("category_id = ?", categoryID).Delete(&model.ShareLink{}).Error; err != nil {
+		if err := tx.Where("collection_id = ?", categoryID).Delete(&model.ShareLink{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("category_id = ?", categoryID).Delete(&model.ShareViewLog{}).Error; err != nil {
+		if err := tx.Where("collection_id = ?", categoryID).Delete(&model.ShareViewLog{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("category_id = ?", categoryID).Delete(&model.CategoryResourceRelation{}).Error; err != nil {
+		if err := tx.Where("collection_id = ?", categoryID).Delete(&model.CategoryResourceRelation{}).Error; err != nil {
 			return err
 		}
 		if len(itemIDs) > 0 {
@@ -558,13 +555,13 @@ func DeleteCategoryItem(c *gin.Context) {
 
 	resourcePaths, _ := collectCategoryResourcePaths("", itemID)
 	if err := db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("category_item_id = ?", itemID).Delete(&model.ShareLink{}).Error; err != nil {
+		if err := tx.Where("category_id = ?", itemID).Delete(&model.ShareLink{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("category_item_id = ?", itemID).Delete(&model.ShareViewLog{}).Error; err != nil {
+		if err := tx.Where("category_id = ?", itemID).Delete(&model.ShareViewLog{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("category_item_id = ?", itemID).Delete(&model.CategoryResourceRelation{}).Error; err != nil {
+		if err := tx.Where("category_id = ?", itemID).Delete(&model.CategoryResourceRelation{}).Error; err != nil {
 			return err
 		}
 		return tx.Where("id = ?", itemID).Delete(&model.CategoryItem{}).Error
@@ -633,15 +630,15 @@ func GetCategoryDetail(c *gin.Context) {
 	var resourceList []model.CategoryResourceRelation
 	var shareLinks []model.ShareLink
 	db.DB.Where("id = ?", category.UserID).Take(&user)
-	itemQuery := db.DB.Model(&model.CategoryItem{}).Where("category_id = ?", categoryID)
+	itemQuery := db.DB.Model(&model.CategoryItem{}).Where("collection_id = ?", categoryID)
 	var itemTotal int64
 	if err := itemQuery.Count(&itemTotal).Error; err != nil {
 		result.ErrSetMsg(c, "查询展册详情失败")
 		return
 	}
 	itemQuery.Order("created_at desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&itemList)
-	db.DB.Where("category_id = ? AND (category_item_id = '' OR category_item_id IS NULL)", categoryID).Order("sort asc, created_at asc").Find(&resourceList)
-	db.DB.Where("category_id = ?", categoryID).Order("created_at desc").Find(&shareLinks)
+	db.DB.Where("collection_id = ? AND (category_id = '' OR category_id IS NULL)", categoryID).Order("sort asc, created_at asc").Find(&resourceList)
+	db.DB.Where("collection_id = ?", categoryID).Order("created_at desc").Find(&shareLinks)
 
 	result.OkSetData(c, model.CategoryDetail{
 		Collection:   category,
@@ -675,8 +672,8 @@ func GetCategoryItemDetail(c *gin.Context) {
 
 	var resourceList []model.CategoryResourceRelation
 	var shareLinks []model.ShareLink
-	db.DB.Where("category_item_id = ?", itemID).Order("sort asc, created_at asc").Find(&resourceList)
-	db.DB.Where("category_item_id = ?", itemID).Order("created_at desc").Find(&shareLinks)
+	db.DB.Where("category_id = ?", itemID).Order("sort asc, created_at asc").Find(&resourceList)
+	db.DB.Where("category_id = ?", itemID).Order("created_at desc").Find(&shareLinks)
 
 	result.OkSetData(c, gin.H{
 		"category":     item,
@@ -703,10 +700,10 @@ func UploadCategoryResource(c *gin.Context) {
 		return
 	}
 
-	categoryItemID := strings.TrimSpace(c.PostForm("categoryItemId"))
+	categoryItemID := strings.TrimSpace(c.PostForm("categoryId"))
 	if categoryItemID != "" {
 		var item model.CategoryItem
-		if err := db.DB.Where("id = ? AND category_id = ? AND user_id = ?", categoryItemID, categoryID, currentUserID).Take(&item).Error; err != nil {
+		if err := db.DB.Where("id = ? AND collection_id = ? AND user_id = ?", categoryItemID, categoryID, currentUserID).Take(&item).Error; err != nil {
 			result.ErrSetMsg(c, "分类不存在")
 			return
 		}
@@ -845,13 +842,7 @@ func CreateShareLink(c *gin.Context) {
 		return
 	}
 	collectionID := strings.TrimSpace(req.CollectionID)
-	if collectionID == "" {
-		collectionID = strings.TrimSpace(req.CategoryID)
-	}
 	categoryID := strings.TrimSpace(req.CategoryID)
-	if categoryID == "" {
-		categoryID = strings.TrimSpace(req.LegacyItemID)
-	}
 	if collectionID == "" {
 		result.ErrSetMsg(c, "展册 ID 不能为空")
 		return
@@ -860,9 +851,6 @@ func CreateShareLink(c *gin.Context) {
 	targetType := strings.TrimSpace(req.TargetType)
 	if targetType == "" {
 		targetType = model.ShareTargetCollection
-	}
-	if targetType == model.ShareTargetItem {
-		targetType = model.ShareTargetCategory
 	}
 	if targetType != model.ShareTargetCollection && targetType != model.ShareTargetCategory {
 		result.ErrSetMsg(c, "分享目标类型不正确")
@@ -886,7 +874,7 @@ func CreateShareLink(c *gin.Context) {
 			return
 		}
 		var itemRecord model.CategoryItem
-		if err := db.DB.Where("id = ? AND category_id = ? AND user_id = ?", categoryID, collectionID, currentUserID).Take(&itemRecord).Error; err != nil {
+		if err := db.DB.Where("id = ? AND collection_id = ? AND user_id = ?", categoryID, collectionID, currentUserID).Take(&itemRecord).Error; err != nil {
 			result.ErrSetMsg(c, "分类不存在或不属于当前展册")
 			return
 		}
@@ -931,27 +919,24 @@ func GetShareLinkList(c *gin.Context) {
 		return
 	}
 
-	categoryID := strings.TrimSpace(c.Query("categoryId"))
-	categoryItemID := strings.TrimSpace(c.Query("categoryItemId"))
-	if categoryItemID == "" {
-		categoryItemID = strings.TrimSpace(c.Query("itemId"))
-	}
+	categoryID := strings.TrimSpace(c.Query("collectionId"))
+	categoryItemID := strings.TrimSpace(c.Query("categoryId"))
 
 	query := db.DB.Table("tbl_share_link AS sl").
 		Select(`
-			sl.id, sl.share_code, sl.title, sl.description, sl.target_type, sl.category_id,
-			c.name AS category_name, sl.category_item_id, ci.name AS category_item_name,
+			sl.id, sl.share_code, sl.title, sl.description, sl.target_type, sl.collection_id,
+			c.name AS category_name, sl.category_id, ci.name AS category_item_name,
 			sl.view_count, sl.status, sl.expires_at, sl.created_at, sl.updated_at
 		`).
-		Joins("LEFT JOIN tbl_category c ON c.id = sl.category_id").
-		Joins("LEFT JOIN tbl_category_item ci ON ci.id = sl.category_item_id").
+		Joins("LEFT JOIN tbl_collection c ON c.id = sl.collection_id").
+		Joins("LEFT JOIN tbl_category ci ON ci.id = sl.category_id").
 		Where("sl.user_id = ?", currentUserID)
 
 	if categoryID != "" {
-		query = query.Where("sl.category_id = ?", categoryID)
+		query = query.Where("sl.collection_id = ?", categoryID)
 	}
 	if categoryItemID != "" {
-		query = query.Where("sl.category_item_id = ?", categoryItemID)
+		query = query.Where("sl.category_id = ?", categoryItemID)
 	}
 
 	type shareLinkRow struct {
@@ -1078,17 +1063,17 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 	}
 	if shareLink.TargetType == model.ShareTargetCategory && shareLink.CategoryItemID != "" {
 		var itemRecord model.CategoryItem
-		if err := db.DB.Where("id = ?", shareLink.CategoryItemID).Take(&itemRecord).Error; err == nil {
+		if err := db.DB.Where("id = ? AND collection_id = ?", shareLink.CategoryItemID, shareLink.CategoryID).Take(&itemRecord).Error; err == nil {
 			item = &itemRecord
 			if !itemRecord.Visible {
 				result.ErrSetMsg(c, "分享内容当前不可查看")
 				return model.ShareView{}, false
 			}
 		}
-		db.DB.Where("category_item_id = ?", shareLink.CategoryItemID).Order("sort asc, created_at asc").Find(&resourceList)
+		db.DB.Where("category_id = ?", shareLink.CategoryItemID).Order("sort asc, created_at asc").Find(&resourceList)
 	} else {
-		db.DB.Where("category_id = ? AND visible = ?", shareLink.CategoryID, true).Order("created_at asc").Find(&itemList)
-		db.DB.Where("category_id = ?", shareLink.CategoryID).Order("sort asc, created_at asc").Find(&resourceList)
+		db.DB.Where("collection_id = ? AND visible = ?", shareLink.CategoryID, true).Order("created_at asc").Find(&itemList)
+		db.DB.Where("collection_id = ?", shareLink.CategoryID).Order("sort asc, created_at asc").Find(&resourceList)
 	}
 
 	shareLink.Title = currentShareTitle(shareLink, category, item)
@@ -1281,7 +1266,7 @@ func hasCategoryName(userID string, name string, excludeID string) bool {
 
 func hasCategoryItemName(userID string, categoryID string, name string, excludeID string) bool {
 	query := db.DB.Model(&model.CategoryItem{}).Where(
-		"user_id = ? AND category_id = ? AND name = ?",
+		"user_id = ? AND collection_id = ? AND name = ?",
 		userID,
 		categoryID,
 		strings.TrimSpace(name),
@@ -1298,12 +1283,12 @@ func collectCategoryResourcePaths(categoryID string, categoryItemID string) ([]s
 	query := db.DB.Model(&model.Resource{})
 	if categoryItemID != "" {
 		query = query.Joins(
-			"JOIN tbl_category_resource_relation rel ON rel.resource_id = tbl_resource.id",
-		).Where("rel.category_item_id = ?", categoryItemID)
+			"JOIN tbl_collection_resource_relation rel ON rel.resource_id = tbl_resource.id",
+		).Where("rel.category_id = ?", categoryItemID)
 	} else {
 		query = query.Joins(
-			"JOIN tbl_category_resource_relation rel ON rel.resource_id = tbl_resource.id",
-		).Where("rel.category_id = ?", categoryID)
+			"JOIN tbl_collection_resource_relation rel ON rel.resource_id = tbl_resource.id",
+		).Where("rel.collection_id = ?", categoryID)
 	}
 	var paths []string
 	return paths, query.Pluck("tbl_resource.storage_path", &paths).Error

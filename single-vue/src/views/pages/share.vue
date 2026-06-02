@@ -98,7 +98,7 @@ const filteredResources = computed(() => {
   const list = detail.value?.resourceList || [];
   if (!isCollectionShare.value) return list;
   if (selectedFilter.value === 'all') return list;
-  return list.filter((item: any) => item.categoryItemId === selectedFilter.value);
+  return list.filter((item: any) => item.categoryId === selectedFilter.value);
 });
 
 onMounted(async () => {

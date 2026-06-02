@@ -613,7 +613,7 @@ async function submitUpload() {
 
   const formData = new FormData();
   formData.append('file', selectedFile.value);
-  formData.append('categoryItemId', uploadTargetCategoryId.value);
+  formData.append('categoryId', uploadTargetCategoryId.value);
 
   uploading.value = true;
   try {

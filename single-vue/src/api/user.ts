@@ -61,7 +61,7 @@ export function createCategory(data: {
   status?: string;
 }) {
   return AxiosUtil({
-    url: '/api/platform/categories',
+    url: '/api/platform/collections',
     method: 'post',
     data,
   });
@@ -69,14 +69,14 @@ export function createCategory(data: {
 
 export function deleteCategory(id: string) {
   return AxiosUtil({
-    url: `/api/platform/categories/${id}/delete`,
+    url: `/api/platform/collections/${id}/delete`,
     method: 'post',
   });
 }
 
 export function getUserCategories(userId: string, params?: { page?: number; pageSize?: number }) {
   return AxiosUtil({
-    url: `/api/platform/users/${userId}/categories`,
+    url: `/api/platform/users/${userId}/collections`,
     method: 'get',
     params,
   });
@@ -84,7 +84,7 @@ export function getUserCategories(userId: string, params?: { page?: number; page
 
 export function getCategoryDetail(id: string, params?: { page?: number; pageSize?: number }) {
   return AxiosUtil({
-    url: `/api/platform/categories/${id}`,
+    url: `/api/platform/collections/${id}`,
     method: 'get',
     params,
   });
@@ -99,12 +99,9 @@ export function createCategoryItem(data: {
   status?: string;
 }) {
   return AxiosUtil({
-    url: '/api/platform/category-items',
+    url: '/api/platform/categories',
     method: 'post',
-    data: {
-      ...data,
-      categoryId: data.collectionId,
-    },
+    data,
   });
 }
 
@@ -118,7 +115,7 @@ export function updateCategoryItem(
   }
 ) {
   return AxiosUtil({
-    url: `/api/platform/category-items/${id}/update`,
+    url: `/api/platform/categories/${id}/update`,
     method: 'post',
     data,
   });
@@ -126,21 +123,21 @@ export function updateCategoryItem(
 
 export function deleteCategoryItem(id: string) {
   return AxiosUtil({
-    url: `/api/platform/category-items/${id}/delete`,
+    url: `/api/platform/categories/${id}/delete`,
     method: 'post',
   });
 }
 
 export function getCategoryItemDetail(id: string) {
   return AxiosUtil({
-    url: `/api/platform/category-items/${id}`,
+    url: `/api/platform/categories/${id}`,
     method: 'get',
   });
 }
 
 export function uploadCategoryResource(id: string, formData: FormData) {
   return AxiosUtil({
-    url: `/api/platform/categories/${id}/resources`,
+    url: `/api/platform/collections/${id}/resources`,
     method: 'post',
     data: formData,
     headers: {
@@ -167,10 +164,7 @@ export function createShareLink(data: {
   return AxiosUtil({
     url: '/api/platform/share-links',
     method: 'post',
-    data: {
-      ...data,
-      categoryItemId: data.categoryId,
-    },
+    data,
   });
 }
 
@@ -192,7 +186,7 @@ export function updateCategory(
   }
 ) {
   return AxiosUtil({
-    url: `/api/platform/categories/${id}/update`,
+    url: `/api/platform/collections/${id}/update`,
     method: 'post',
     data,
   });
@@ -202,10 +196,7 @@ export function getShareLinkList(params?: { collectionId?: string; categoryId?: 
   return AxiosUtil({
     url: '/api/platform/share-links',
     method: 'get',
-    params: {
-      categoryId: params?.collectionId,
-      categoryItemId: params?.categoryId,
-    },
+    params,
   });
 }
 
