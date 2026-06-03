@@ -35,7 +35,8 @@
                     <template #default="{ row: categoryRow }">
                       <div class="resource-panel" v-loading="itemLoadingMap[categoryRow.id]">
                         <template v-if="expandedItemDetailMap[categoryRow.id]">
-                          <div v-if="expandedItemDetailMap[categoryRow.id].resourceList?.length" class="resource-grid">
+                          <template v-if="expandedItemDetailMap[categoryRow.id].resourceList?.length">
+                            <TransitionGroup tag="div" class="resource-grid" name="resource-list">
                             <div
                               v-for="resource in expandedItemDetailMap[categoryRow.id].resourceList"
                               :key="resource.id"
@@ -52,6 +53,7 @@
                               @dragend="handleResourceDragEnd"
                             >
                               <div class="resource-preview">
+                                <span class="resource-sort-badge" v-if="resource.sort">#{{ resource.sort }}</span>
                                 <el-image
                                   v-if="resource.resourceType !== 'video'"
                                   :src="resource.fileUrl"
@@ -63,24 +65,36 @@
                                   hide-on-click-modal
                                   loading="lazy"
                                 />
-                                <video v-else :src="resource.fileUrl" controls playsinline preload="metadata"></video>
+                                <video
+                                  v-else
+                                  :src="resource.fileUrl"
+                                  controls
+                                  playsinline
+                                  preload="auto"
+                                  @loadedmetadata="showVideoFirstFrame"
+                                ></video>
                               </div>
                               <div class="resource-info">
                                 <strong>{{ resource.fileName }}</strong>
                                 <span>{{ resource.resourceType }} · {{ resource.mimeType || '未知类型' }}</span>
-                                <div class="resource-meta">大小：{{ formatFileSize(resource.fileSize) }}</div>
-                                <div class="resource-actions">
-                                  <el-button
-                                    link
-                                    type="danger"
-                                    @click="confirmDeleteResource(resource.resourceId, categoryRow.categoryId, categoryRow.id)"
-                                  >
-                                    删除资源
-                                  </el-button>
+                                <div class="resource-meta-row">
+                                  <span class="resource-meta">大小：{{ formatFileSize(resource.fileSize) }}</span>
+                                  <div class="resource-actions">
+                                    <el-tooltip content="删除资源" placement="top" :show-after="400">
+                                      <el-button
+                                        :icon="Delete"
+                                        size="small"
+                                        text
+                                        type="danger"
+                                        @click.stop="confirmDeleteResource(resource.resourceId, categoryRow.categoryId, categoryRow.id)"
+                                      />
+                                    </el-tooltip>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
+                            </TransitionGroup>
+                          </template>
                           <el-empty v-else description="这个分类下还没有关联资源" />
                         </template>
                       </div>
@@ -261,18 +275,22 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="uploadDialogVisible" title="上传分类资源" width="460px" @closed="resetUploadDialog">
-      <el-upload
-        v-model:file-list="uploadFileList"
-        drag
-        :auto-upload="false"
-        :limit="1"
-        :on-change="handleFileChange"
-        :on-remove="handleFileRemove"
-      >
-        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div>拖拽文件到这里，或者点击选择</div>
-      </el-upload>
+    <el-dialog v-model="uploadDialogVisible" title="上传分类资源" width="560px" @closed="resetUploadDialog">
+      <div class="upload-wall">
+        <el-upload
+          v-model:file-list="uploadFileList"
+          list-type="picture-card"
+          :auto-upload="false"
+          multiple
+          :on-change="handleFileChange"
+          :on-remove="handleFileRemove"
+        >
+          <el-icon><Plus /></el-icon>
+          <template #tip>
+            <div class="upload-wall__tip">点击卡片选择资源，上传后会展示在当前分类的资源墙里。</div>
+          </template>
+        </el-upload>
+      </div>
       <template #footer>
         <el-button @click="uploadDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="uploading" @click="submitUpload">上传</el-button>
@@ -285,7 +303,7 @@
 import { reactive, ref } from 'vue';
 import type { UploadFile, UploadFiles, UploadUserFile } from 'element-plus';
 import { ElMessageBox } from 'element-plus';
-import { UploadFilled } from '@element-plus/icons-vue';
+import { Delete, Plus } from '@element-plus/icons-vue';
 import {
   createCategory,
   createCategoryItem,
@@ -357,7 +375,6 @@ const shareForm = reactive({
 
 const uploadTargetCollectionId = ref('');
 const uploadTargetCategoryId = ref('');
-const selectedFile = ref<File | null>(null);
 const uploadFileList = ref<UploadUserFile[]>([]);
 const categoryItemParentName = ref('');
 const draggingCategoryId = ref('');
@@ -590,6 +607,12 @@ function formatFileSize(size?: number) {
   return `${value.toFixed(fixed)} ${units[unitIndex]}`;
 }
 
+function showVideoFirstFrame(event: Event) {
+  const video = event.target as HTMLVideoElement;
+  if (!video.duration || video.currentTime > 0) return;
+  video.currentTime = Math.min(0.1, video.duration / 2);
+}
+
 function handleResourceDragStart(categoryId: string, resourceId: string) {
   draggingCategoryId.value = categoryId;
   draggingResourceId.value = resourceId;
@@ -626,14 +649,20 @@ async function handleResourceDrop(categoryId: string, targetResourceId: string) 
   nextList.splice(targetIndex, 0, movedItem);
   const previousList = resourceList.slice();
 
+  // Sync sort values with new positions after reorder
+  const updatedList = nextList.map((item, index) => ({
+    ...item,
+    sort: index + 1,
+  }));
+
   expandedItemDetailMap[categoryId] = {
     ...targetDetail,
-    resourceList: nextList,
+    resourceList: updatedList,
   };
 
   try {
     await updateCategoryResourceSort(categoryId, {
-      resourceRelationIds: nextList.map((item: any) => item.id),
+      resourceRelationIds: updatedList.map((item: any) => item.id),
     });
     toast('资源顺序已更新', 'success');
   } catch (error) {
@@ -699,17 +728,14 @@ function openUploadDialog(collectionId: string, categoryId: string) {
 }
 
 function handleFileChange(file: UploadFile, fileList: UploadFiles) {
-  selectedFile.value = file.raw;
-  uploadFileList.value = fileList.slice(-1);
+  uploadFileList.value = fileList;
 }
 
-function handleFileRemove() {
-  selectedFile.value = null;
-  uploadFileList.value = [];
+function handleFileRemove(file: UploadFile, fileList: UploadFiles) {
+  uploadFileList.value = fileList;
 }
 
 function resetUploadDialog() {
-  selectedFile.value = null;
   uploadFileList.value = [];
 }
 
@@ -718,19 +744,24 @@ async function submitUpload() {
     toast('只能给分类上传资源', 'warning');
     return;
   }
-  if (!selectedFile.value) {
+  const rawFiles = uploadFileList.value
+    .map((file) => file.raw)
+    .filter((file): file is File => Boolean(file));
+
+  if (!rawFiles.length) {
     toast('请选择要上传的文件', 'warning');
     return;
   }
 
-  const formData = new FormData();
-  formData.append('file', selectedFile.value);
-  formData.append('categoryId', uploadTargetCategoryId.value);
-
   uploading.value = true;
   try {
-    await uploadCategoryResource(uploadTargetCollectionId.value, formData);
-    toast('资源上传成功', 'success');
+    for (const file of rawFiles) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('categoryId', uploadTargetCategoryId.value);
+      await uploadCategoryResource(uploadTargetCollectionId.value, formData);
+    }
+    toast(`成功上传 ${rawFiles.length} 个资源`, 'success');
     uploadDialogVisible.value = false;
     resetUploadDialog();
     await loadCollectionDetail(uploadTargetCollectionId.value, expandedDetailMap[uploadTargetCollectionId.value]?.page || 1);
@@ -869,6 +900,33 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
+.resource-sort-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: rgba(23, 49, 95, 0.68);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.resource-card:hover .resource-sort-badge {
+  background: rgba(47, 107, 255, 0.82);
+}
+
 .resource-card--dragging {
   opacity: 0.62;
   transform: rotate(1.5deg) scale(0.98);
@@ -880,7 +938,17 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.12);
 }
 
+.resource-card:hover {
+  border-color: rgba(47, 107, 255, 0.28);
+  box-shadow: 0 14px 28px rgba(60, 102, 190, 0.12);
+}
+
+.resource-list-move {
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
 .resource-preview {
+  position: relative;
   background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
 }
 
@@ -888,7 +956,7 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 .resource-preview video {
   display: block;
   width: 100%;
-  height: 88px;
+  height: 80px;
   cursor: zoom-in;
 }
 
@@ -898,38 +966,52 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 }
 
 .resource-info {
-  padding: 8px 10px 10px;
+  padding: 6px 8px 6px;
 }
 
 .resource-info strong {
   display: block;
   color: #17315f;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.3;
   word-break: break-all;
 }
 
 .resource-info span {
   display: block;
-  margin: 3px 0 6px;
+  margin: 0;
   color: #6d82a7;
-  font-size: 11px;
+  font-size: 10px;
+  line-height: 1.3;
 }
 
 .resource-meta {
   color: #8a99b8;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.resource-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
 }
 
 .resource-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 6px;
-  gap: 8px;
-  align-items: center;
+  margin: 0;
 }
 
+
+.resource-actions .el-button {
+  opacity: 0.55;
+  transition: opacity 0.18s ease;
+}
+
+.resource-card:hover .resource-actions .el-button {
+  opacity: 1;
+}
 .row-actions {
   display: flex;
   justify-content: flex-end;
@@ -942,5 +1024,37 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.upload-wall {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 4px;
+}
+
+.upload-wall :deep(.el-upload-list--picture-card) {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.upload-wall :deep(.el-upload--picture-card),
+.upload-wall :deep(.el-upload-list--picture-card .el-upload-list__item) {
+  width: 148px;
+  height: 148px;
+  border-radius: 18px;
+}
+
+.upload-wall :deep(.el-upload--picture-card) {
+  border: 1px dashed rgba(47, 107, 255, 0.42);
+  background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+}
+
+.upload-wall__tip {
+  width: 100%;
+  margin-top: 12px;
+  color: #6d82a7;
+  font-size: 13px;
+  text-align: center;
 }
 </style>

@@ -25,8 +25,21 @@
         <h2>资源展示</h2>
         <div class="media-grid">
           <article v-for="item in filteredResources" :key="item.id" class="media-card">
-            <img v-if="item.resourceType !== 'video'" :src="item.fileUrl" :alt="item.fileName" loading="lazy" />
-            <video v-else :src="item.fileUrl" controls playsinline preload="metadata"></video>
+            <img
+              v-if="item.resourceType !== 'video'"
+              :src="item.fileUrl"
+              :alt="item.fileName"
+              loading="lazy"
+              @click="openPreview(item.fileUrl, item.fileName)"
+            />
+            <video
+              v-else
+              :src="item.fileUrl"
+              controls
+              playsinline
+              preload="auto"
+              @loadedmetadata="showVideoFirstFrame"
+            ></video>
             <div class="media-info">
               <span>{{ item.fileName }}</span>
               <span>{{ item.resourceType }}</span>
@@ -43,11 +56,16 @@
         <span>浏览次数：{{ detail.shareLink.viewCount }}</span>
       </section>
     </div>
+
+    <div v-if="previewVisible" class="image-preview" @click.self="closePreview">
+      <button class="image-preview__close" type="button" aria-label="关闭预览" @click="closePreview">×</button>
+      <img :src="previewImage" :alt="previewTitle" class="image-preview__image" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { getShareLinkDetail } from '@/api/user';
 import { resolveResourceURL } from '@/util/util';
@@ -57,6 +75,11 @@ const loading = ref(false);
 const detail = ref<any>(null);
 const errorMessage = ref('');
 const selectedFilter = ref('all');
+const previewVisible = ref(false);
+const previewImage = ref('');
+const previewTitle = ref('');
+const originalViewportContent = ref('');
+let lastTouchEndAt = 0;
 
 const isCollectionShare = computed(() => detail.value?.shareLink?.targetType === 'collection');
 const selectedCategory = computed(() => {
@@ -102,6 +125,10 @@ const filteredResources = computed(() => {
 });
 
 onMounted(async () => {
+  lockShareViewport();
+  document.addEventListener('gesturestart', preventGestureZoom, { passive: false });
+  document.addEventListener('dblclick', preventGestureZoom, { passive: false });
+  document.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
   const code = String(route.params.code || '');
   if (!code) {
     errorMessage.value = '分享链接不存在或分享码无效。';
@@ -129,11 +156,66 @@ onMounted(async () => {
   }
 });
 
+onUnmounted(() => {
+  document.removeEventListener('gesturestart', preventGestureZoom);
+  document.removeEventListener('dblclick', preventGestureZoom);
+  document.removeEventListener('touchend', preventDoubleTapZoom);
+  restoreViewport();
+});
+
 function normalizeResourceList(resourceList: any[]) {
   return resourceList.map((item) => ({
     ...item,
     fileUrl: resolveResourceURL(item.url || item.storagePath || ''),
   }));
+}
+
+function openPreview(url: string, title: string) {
+  previewImage.value = url;
+  previewTitle.value = title;
+  previewVisible.value = true;
+}
+
+function closePreview() {
+  previewVisible.value = false;
+  previewImage.value = '';
+  previewTitle.value = '';
+}
+
+function showVideoFirstFrame(event: Event) {
+  const video = event.target as HTMLVideoElement;
+  if (!video.duration || video.currentTime > 0) return;
+  video.currentTime = Math.min(0.1, video.duration / 2);
+}
+
+function preventGestureZoom(event: Event) {
+  event.preventDefault();
+}
+
+function lockShareViewport() {
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    originalViewportContent.value = viewport.getAttribute('content') || '';
+    viewport.setAttribute(
+      'content',
+      'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+    );
+  }
+}
+
+function restoreViewport() {
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport && originalViewportContent.value) {
+    viewport.setAttribute('content', originalViewportContent.value);
+  }
+}
+
+function preventDoubleTapZoom(event: TouchEvent) {
+  const now = Date.now();
+  if (now - lastTouchEndAt <= 300) {
+    event.preventDefault();
+  }
+  lastTouchEndAt = now;
 }
 </script>
 
@@ -145,6 +227,7 @@ function normalizeResourceList(resourceList: any[]) {
     radial-gradient(circle at right center, rgba(194, 225, 255, 0.18), transparent 24%),
     linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
   padding: 18px 12px 40px;
+  touch-action: manipulation;
 }
 
 .share-card {
@@ -268,6 +351,10 @@ function normalizeResourceList(resourceList: any[]) {
   background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
 }
 
+.media-card img {
+  cursor: zoom-in;
+}
+
 .media-card video {
   max-height: 72vh;
 }
@@ -293,6 +380,40 @@ function normalizeResourceList(resourceList: any[]) {
 
 .meta-inline span {
   white-space: nowrap;
+}
+
+.image-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(7, 17, 40, 0.88);
+}
+
+.image-preview__close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.image-preview__image {
+  display: block;
+  max-width: min(100%, 960px);
+  max-height: min(100vh - 80px, 90vh);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
 }
 
 @media (min-width: 768px) {

@@ -141,8 +141,9 @@ async function handleRegister() {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   background:
-    radial-gradient(circle at top left, rgba(183, 217, 189, 0.9), transparent 32%),
-    linear-gradient(135deg, #f4efe2, #e8f1eb);
+    radial-gradient(circle at top left, rgba(139, 180, 255, 0.18), transparent 32%),
+    radial-gradient(circle at right center, rgba(194, 225, 255, 0.18), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
 }
 
 .hero-panel {
@@ -150,7 +151,7 @@ async function handleRegister() {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  color: #1e3428;
+  color: #17315f;
 }
 
 .hero-tag {
@@ -158,8 +159,8 @@ async function handleRegister() {
   width: fit-content;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(49, 92, 69, 0.12);
-  color: #315c45;
+  background: rgba(47, 107, 255, 0.10);
+  color: #2f6bff;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -175,7 +176,7 @@ async function handleRegister() {
 .hero-panel p {
   max-width: 480px;
   font-size: 18px;
-  color: #587061;
+  color: #6d82a7;
 }
 
 .login-card {
@@ -183,21 +184,22 @@ async function handleRegister() {
   align-self: center;
   justify-self: center;
   border-radius: 28px;
-  border: 1px solid rgba(32, 53, 41, 0.08);
-  background: rgba(255, 253, 249, 0.92);
+  border: 1px solid rgba(123, 162, 255, 0.16);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(14px);
+  box-shadow: 0 24px 60px rgba(36, 84, 170, 0.08);
 }
 
 .card-header h2 {
   margin: 0;
-  color: #203529;
+  color: #17315f;
 }
 
 .card-header span {
   display: block;
   margin-top: 6px;
   font-size: 13px;
-  color: #69806f;
+  color: #6d82a7;
 }
 
 .submit-btn {
@@ -208,7 +210,7 @@ async function handleRegister() {
 
 .helper-text {
   margin-top: 18px;
-  color: #7a877f;
+  color: #7f90af;
   font-size: 12px;
   line-height: 1.6;
 }

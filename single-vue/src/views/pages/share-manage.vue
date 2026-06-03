@@ -21,7 +21,7 @@
       </div>
 
       <el-table :data="shareLinks" v-loading="loading" class="share-table">
-        <el-table-column label="二级标题" min-width="240">
+        <el-table-column label="二级标题" min-width="220">
           <template #default="{ row }">
             <div class="share-title-block">
               <strong>
@@ -35,33 +35,33 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="分享类型" width="140">
+        <el-table-column label="分享类型" width="120">
           <template #default="{ row }">
             <span class="share-type-tag">
               {{ row.targetType === 'category' ? '分类分享' : '展册分享' }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="shareCode" label="分享码" width="140" />
-        <el-table-column prop="viewCount" label="访问量" width="100" />
-        <el-table-column label="到期时间" width="150">
+        <el-table-column prop="shareCode" label="分享码" width="120" />
+        <el-table-column prop="viewCount" label="访问量" width="88" />
+        <el-table-column label="到期时间" width="128">
           <template #default="{ row }">
             {{ row.expiresAt || '长期有效' }}
           </template>
         </el-table-column>
-        <el-table-column label="链接" min-width="260" show-overflow-tooltip>
+        <el-table-column label="链接" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
             <a :href="row.shareUrl" target="_blank" class="share-url">{{ row.shareUrl }}</a>
           </template>
         </el-table-column>
-        <el-table-column label="二维码" width="110" align="center" header-align="center">
+        <el-table-column label="二维码" width="84" align="center" header-align="center">
           <template #default="{ row }">
             <button class="qr-button" type="button" title="点击查看二维码" @click="openQrDialog(row)">
-              <qrcode-vue :value="row.shareUrl" :size="44" level="M" render-as="svg" />
+              <qrcode-vue :value="row.shareUrl" :size="32" level="M" render-as="svg" />
             </button>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="96" align="center" header-align="center" fixed="right">
+        <el-table-column label="操作" width="72" align="center" header-align="center">
           <template #default="{ row }">
             <el-button link type="danger" class="delete-link" @click="confirmDelete(row.id)">删除</el-button>
           </template>
@@ -214,10 +214,6 @@ function openQrDialog(row: any) {
   padding: 12px 0;
 }
 
-.share-table :deep(.el-table-fixed-column--right) {
-  background: #fff;
-}
-
 .share-url {
   display: block;
   color: #2f6bff;
@@ -228,9 +224,9 @@ function openQrDialog(row: any) {
 
 .qr-button {
   display: inline-flex;
-  padding: 6px;
+  padding: 4px;
   border: 1px solid rgba(47, 107, 255, 0.14);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   cursor: zoom-in;
   box-shadow: 0 8px 18px rgba(60, 102, 190, 0.08);

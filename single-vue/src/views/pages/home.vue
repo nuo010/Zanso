@@ -1,12 +1,15 @@
 <template>
   <div class="dashboard">
     <section class="hero-card">
-      <div>
-        <span class="eyebrow">Dashboard</span>
-        <h1>欢迎回来，{{ store.user.name || '用户' }}</h1>
-        <p>这里是资源分享平台的后台首页，主要看展册规模、资源上传和分享状态。</p>
+      <div class="hero-accent"></div>
+      <div class="hero-body">
+        <div class="hero-content">
+          <span class="eyebrow">Dashboard</span>
+          <h1>欢迎回来，{{ store.user.name || '用户' }}</h1>
+          <p>这里是资源分享平台的后台首页，主要看展册规模、资源上传和分享状态。</p>
+        </div>
+        <el-button type="primary" @click="router.push('/categories')">去管理展册</el-button>
       </div>
-      <el-button type="primary" @click="router.push('/categories')">去管理展册</el-button>
     </section>
 
     <section class="stats-grid">
@@ -84,29 +87,47 @@ function formatFileSize(size: number) {
 .hero-card {
   display: flex;
   justify-content: space-between;
+  gap: 0;
+  padding: 0;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(123, 162, 255, 0.16);
+  box-shadow: 0 24px 60px rgba(36, 84, 170, 0.08);
+  overflow: hidden;
+}
+
+.hero-accent {
+  width: 4px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #2f6bff, #69b7ff);
+}
+
+.hero-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 24px;
   padding: 28px;
-  border-radius: 28px;
-  background: linear-gradient(135deg, rgba(47, 107, 255, 0.96), rgba(120, 188, 255, 0.92));
-  color: #fdfefe;
-  box-shadow: 0 24px 60px rgba(47, 107, 255, 0.18);
+  flex: 1;
 }
 
 .eyebrow {
+  color: #2f6bff;
   font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.72;
+  font-weight: 600;
 }
 
-.hero-card h1 {
+.hero-body h1 {
   margin: 10px 0 8px;
   font-size: 34px;
+  color: #17315f;
 }
 
-.hero-card p {
+.hero-body p {
   max-width: 520px;
-  color: rgba(253, 254, 255, 0.88);
+  color: #6d82a7;
 }
 
 .stats-grid {
@@ -176,6 +197,11 @@ function formatFileSize(size: number) {
   .stats-grid {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .hero-body {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
