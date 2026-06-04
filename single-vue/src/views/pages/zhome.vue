@@ -5,7 +5,7 @@
         <div class="panel-header">
           <div>
             <h2>展册管理</h2>
-            <p>展册下面挂分类，分类下面挂资源，分享和可见性都在一套流程里管，别再整那套“分类套分类项”的绕口令了。</p>
+            <p>集中管理展册、分类与资源内容，支持可见性配置、资源维护和分享发布，满足企业级内容展示与分发需求。</p>
           </div>
           <el-button type="primary" @click="openCreateCollectionDialog">新建展册</el-button>
         </div>
@@ -53,7 +53,18 @@
                               @dragend="handleResourceDragEnd"
                             >
                               <div class="resource-preview">
-                                <span class="resource-sort-badge" v-if="resource.sort">#{{ resource.sort }}</span>
+                                <span class="resource-sort-badge" v-if="resource.sort">{{ resource.sort }}</span>
+                                <div class="resource-actions">
+                                  <el-tooltip content="删除资源" placement="top" :show-after="400">
+                                    <el-button
+                                      :icon="Delete"
+                                      size="small"
+                                      text
+                                      type="danger"
+                                      @click.stop="confirmDeleteResource(resource.resourceId, categoryRow.categoryId, categoryRow.id)"
+                                    />
+                                  </el-tooltip>
+                                </div>
                                 <el-image
                                   v-if="resource.resourceType !== 'video'"
                                   :src="resource.fileUrl"
@@ -75,33 +86,37 @@
                                 ></video>
                               </div>
                               <div class="resource-info">
-                                <strong>{{ resource.fileName }}</strong>
-                                <span>{{ resource.resourceType }} · {{ resource.mimeType || '未知类型' }}</span>
+                                <strong :title="resource.fileName">{{ resource.fileName }}</strong>
+                                <span :title="`${resource.resourceType} · ${resource.mimeType || '未知类型'}`">
+                                  {{ resource.resourceType }} · {{ resource.mimeType || '未知类型' }}
+                                </span>
                                 <div class="resource-meta-row">
-                                  <span class="resource-meta">大小：{{ formatFileSize(resource.fileSize) }}</span>
-                                  <div class="resource-actions">
-                                    <el-tooltip content="删除资源" placement="top" :show-after="400">
-                                      <el-button
-                                        :icon="Delete"
-                                        size="small"
-                                        text
-                                        type="danger"
-                                        @click.stop="confirmDeleteResource(resource.resourceId, categoryRow.categoryId, categoryRow.id)"
-                                      />
-                                    </el-tooltip>
-                                  </div>
+                                  <span class="resource-meta">{{ formatFileSize(resource.fileSize) }}</span>
                                 </div>
                               </div>
                             </div>
                             </TransitionGroup>
                           </template>
-                          <el-empty v-else description="这个分类下还没有关联资源" />
+                          <el-empty v-else description="当前分类下暂无关联资源" />
                         </template>
                       </div>
                     </template>
                   </el-table-column>
                   <el-table-column prop="name" min-width="220" />
-                  <el-table-column prop="description" min-width="240" />
+                  <el-table-column label="描述" min-width="240" show-overflow-tooltip>
+                    <template #default="{ row: categoryRow }">
+                      <el-tooltip
+                        v-if="shouldShowDescriptionTooltip(categoryRow.description)"
+                        :content="formatDescription(categoryRow.description)"
+                        placement="top"
+                        effect="light"
+                        popper-class="description-tooltip"
+                      >
+                        <span class="description-cell">{{ formatDescription(categoryRow.description) }}</span>
+                      </el-tooltip>
+                      <span v-else class="description-cell">{{ formatDescription(categoryRow.description) }}</span>
+                    </template>
+                  </el-table-column>
                   <el-table-column label="展示" width="120" align="center">
                     <template #default="{ row: categoryRow }">
                       <el-switch
@@ -145,7 +160,7 @@
                 </div>
                 <el-empty
                   v-if="!expandedDetailMap[row.id].categories?.length"
-                  description="当前展册下还没有分类"
+                  description="当前展册下暂无分类"
                 />
               </template>
             </div>
@@ -153,7 +168,20 @@
         </el-table-column>
 
         <el-table-column prop="name" label="展册名称" min-width="220" />
-        <el-table-column prop="description" label="描述" min-width="260" />
+        <el-table-column label="描述" min-width="260" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-tooltip
+              v-if="shouldShowDescriptionTooltip(row.description)"
+              :content="formatDescription(row.description)"
+              placement="top"
+              effect="light"
+              popper-class="description-tooltip"
+            >
+              <span class="description-cell">{{ formatDescription(row.description) }}</span>
+            </el-tooltip>
+            <span v-else class="description-cell">{{ formatDescription(row.description) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="展示" width="140" align="center">
           <template #default="{ row }">
             <el-switch
@@ -607,6 +635,14 @@ function formatFileSize(size?: number) {
   return `${value.toFixed(fixed)} ${units[unitIndex]}`;
 }
 
+function formatDescription(description?: string) {
+  return String(description || '').trim() || '暂无描述';
+}
+
+function shouldShowDescriptionTooltip(description?: string) {
+  return formatDescription(description).length > 24;
+}
+
 function showVideoFirstFrame(event: Event) {
   const video = event.target as HTMLVideoElement;
   if (!video.duration || video.currentTime > 0) return;
@@ -879,44 +915,45 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 }
 
 .resource-panel {
-  padding: 16px 20px 20px;
-  background: linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
+  padding: 16px 18px 20px;
+  background: #f5f8fd;
 }
 
 .resource-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 150px));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(164px, 184px));
+  gap: 14px;
 }
 
 .resource-card {
   overflow: hidden;
-  max-width: 150px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(116, 153, 230, 0.16);
-  box-shadow: 0 10px 24px rgba(60, 102, 190, 0.07);
+  max-width: 184px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e4ebf7;
+  box-shadow: 0 8px 18px rgba(43, 77, 130, 0.06);
   cursor: grab;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .resource-sort-badge {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 7px;
+  left: 7px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
-  background: rgba(23, 49, 95, 0.68);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: 999px;
+  background: rgba(17, 31, 54, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   pointer-events: none;
@@ -924,7 +961,7 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 }
 
 .resource-card:hover .resource-sort-badge {
-  background: rgba(47, 107, 255, 0.82);
+  background: rgba(17, 31, 54, 0.68);
 }
 
 .resource-card--dragging {
@@ -939,8 +976,8 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 }
 
 .resource-card:hover {
-  border-color: rgba(47, 107, 255, 0.28);
-  box-shadow: 0 14px 28px rgba(60, 102, 190, 0.12);
+  border-color: rgba(47, 107, 255, 0.24);
+  box-shadow: 0 12px 26px rgba(43, 77, 130, 0.1);
 }
 
 .resource-list-move {
@@ -949,14 +986,15 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 
 .resource-preview {
   position: relative;
-  background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
+  overflow: hidden;
+  background: #eef3fb;
 }
 
 .resource-preview :deep(.el-image),
 .resource-preview video {
   display: block;
   width: 100%;
-  height: 80px;
+  height: 124px;
   cursor: zoom-in;
 }
 
@@ -966,57 +1004,95 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 }
 
 .resource-info {
-  padding: 6px 8px 6px;
+  padding: 7px 10px 8px;
 }
 
 .resource-info strong {
   display: block;
+  overflow: hidden;
   color: #17315f;
-  font-size: 11px;
-  line-height: 1.3;
-  word-break: break-all;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .resource-info span {
   display: block;
+  overflow: hidden;
   margin: 0;
   color: #6d82a7;
   font-size: 10px;
-  line-height: 1.3;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .resource-meta {
   color: #8a99b8;
   font-size: 10px;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .resource-meta-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .resource-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
   display: flex;
+  align-items: center;
   margin: 0;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 
 .resource-actions .el-button {
-  opacity: 0.55;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 14px rgba(21, 37, 64, 0.16);
   transition: opacity 0.18s ease;
 }
 
-.resource-card:hover .resource-actions .el-button {
+.resource-card:hover .resource-actions {
   opacity: 1;
+  transform: translateY(0);
 }
 .row-actions {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.description-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: #606266;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.description-tooltip) {
+  max-width: 360px;
+  color: #4f5b6b;
+  line-height: 1.7;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .table-pagination,

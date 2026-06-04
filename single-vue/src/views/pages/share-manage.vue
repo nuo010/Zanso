@@ -5,7 +5,7 @@
         <div class="panel-header">
           <div>
             <h2>分享链接管理</h2>
-            <p>统一查看所有分享链接，支持按展册和分类筛选，过期时间和访问量一眼能看明白。</p>
+            <p>统一管理展册与分类的对外分享链接，支持筛选查询、访问统计、到期时间查看和二维码分发。</p>
           </div>
         </div>
       </template>
@@ -17,10 +17,16 @@
         <el-select v-model="filters.categoryId" clearable placeholder="分类" class="filter-select">
           <el-option v-for="item in categoryOptions" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
-        <el-button type="primary" @click="loadShareLinks">查询</el-button>
+        <el-button type="primary" :loading="loading" @click="refreshShareLinks">查询</el-button>
       </div>
 
-      <el-table :data="shareLinks" v-loading="loading" class="share-table">
+      <el-table
+        ref="shareTableRef"
+        :data="shareLinks"
+        v-loading="loading && shareLinks.length === 0"
+        class="share-table"
+        max-height="620"
+      >
         <el-table-column label="二级标题" min-width="220">
           <template #default="{ row }">
             <div class="share-title-block">
@@ -67,6 +73,14 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="load-more-bar">
+        <el-button v-if="hasMore" text type="primary" :loading="loadingMore" @click="loadMoreShareLinks">
+          {{ loadingMore ? '加载中' : '加载更多' }}
+        </el-button>
+        <span v-else-if="shareLinks.length">已加载全部 {{ total }} 条分享链接</span>
+        <span v-else-if="!loading">暂无分享链接数据</span>
+      </div>
     </el-card>
 
     <el-dialog v-model="qrDialogVisible" title="分享二维码" width="360px" align-center>
@@ -82,7 +96,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import type { TableInstance } from 'element-plus';
 import { ElMessageBox } from 'element-plus';
 import QrcodeVue from 'qrcode.vue';
 import { deleteShareLink, getCategoryDetail, getShareLinkList } from '@/api/user';
@@ -91,10 +106,17 @@ import { toast } from '@/util/util';
 
 const store = userMainStore();
 const loading = ref(false);
+const loadingMore = ref(false);
 const shareLinks = ref<any[]>([]);
+const shareTableRef = ref<TableInstance>();
 const qrDialogVisible = ref(false);
 const currentQrShare = ref<any>(null);
 const categoryDetailMap = reactive<Record<string, any>>({});
+const page = ref(1);
+const pageSize = 20;
+const total = ref(0);
+const hasMore = ref(false);
+let tableScrollWrapper: HTMLElement | null = null;
 const filters = reactive({
   collectionId: '',
   categoryId: '',
@@ -109,7 +131,13 @@ onMounted(async () => {
   if (!store.categories.length) {
     await store.loadCategories();
   }
-  await loadShareLinks();
+  await refreshShareLinks();
+  await nextTick();
+  bindTableScroll();
+});
+
+onBeforeUnmount(() => {
+  unbindTableScroll();
 });
 
 async function handleCollectionChange() {
@@ -120,16 +148,41 @@ async function handleCollectionChange() {
   }
 }
 
-async function loadShareLinks() {
-  loading.value = true;
+async function refreshShareLinks() {
+  page.value = 1;
+  total.value = 0;
+  hasMore.value = false;
+  shareLinks.value = [];
+  await loadShareLinks(1, true);
+}
+
+async function loadMoreShareLinks() {
+  if (loading.value || loadingMore.value || !hasMore.value) return;
+  await loadShareLinks(page.value + 1, false);
+}
+
+async function loadShareLinks(nextPage = 1, reset = false) {
+  if (loading.value || loadingMore.value) return;
+  if (reset) {
+    loading.value = true;
+  } else {
+    loadingMore.value = true;
+  }
   try {
     const res = await getShareLinkList({
       collectionId: filters.collectionId || undefined,
       categoryId: filters.categoryId || undefined,
+      page: nextPage,
+      pageSize,
     });
-    shareLinks.value = res.data || [];
+    const list = res.data?.list || [];
+    shareLinks.value = reset ? list : [...shareLinks.value, ...list];
+    page.value = res.data?.page || nextPage;
+    total.value = res.data?.total || shareLinks.value.length;
+    hasMore.value = Boolean(res.data?.hasMore);
   } finally {
     loading.value = false;
+    loadingMore.value = false;
   }
 }
 
@@ -141,12 +194,31 @@ async function confirmDelete(id: string) {
   });
   await deleteShareLink(id);
   toast('分享链接已删除', 'success');
-  await loadShareLinks();
+  await refreshShareLinks();
 }
 
 function openQrDialog(row: any) {
   currentQrShare.value = row;
   qrDialogVisible.value = true;
+}
+
+function bindTableScroll() {
+  unbindTableScroll();
+  tableScrollWrapper = shareTableRef.value?.$el?.querySelector('.el-scrollbar__wrap') || null;
+  tableScrollWrapper?.addEventListener('scroll', handleTableScroll, { passive: true });
+}
+
+function unbindTableScroll() {
+  tableScrollWrapper?.removeEventListener('scroll', handleTableScroll);
+  tableScrollWrapper = null;
+}
+
+function handleTableScroll() {
+  if (!tableScrollWrapper || loading.value || loadingMore.value || !hasMore.value) return;
+  const distanceToBottom = tableScrollWrapper.scrollHeight - tableScrollWrapper.scrollTop - tableScrollWrapper.clientHeight;
+  if (distanceToBottom <= 80) {
+    loadMoreShareLinks();
+  }
 }
 </script>
 
@@ -212,6 +284,16 @@ function openQrDialog(row: any) {
 
 .share-table :deep(.el-table__cell) {
   padding: 12px 0;
+}
+
+.load-more-bar {
+  display: flex;
+  justify-content: center;
+  min-height: 38px;
+  margin-top: 12px;
+  color: #8a99b8;
+  font-size: 13px;
+  align-items: center;
 }
 
 .share-url {

@@ -1017,13 +1017,9 @@ func GetShareLinkList(c *gin.Context) {
 
 	categoryID := strings.TrimSpace(c.Query("collectionId"))
 	categoryItemID := strings.TrimSpace(c.Query("categoryId"))
+	page, pageSize := parsePageParams(c)
 
 	query := db.DB.Table("tbl_share_link AS sl").
-		Select(`
-			sl.id, sl.share_code, sl.title, sl.description, sl.target_type, sl.collection_id,
-			c.name AS category_name, sl.category_id, ci.name AS category_item_name,
-			sl.view_count, sl.status, sl.expires_at, sl.created_at, sl.updated_at
-		`).
 		Joins("LEFT JOIN tbl_collection c ON c.id = sl.collection_id").
 		Joins("LEFT JOIN tbl_category ci ON ci.id = sl.category_id").
 		Where("sl.user_id = ?", currentUserID)
@@ -1035,15 +1031,21 @@ func GetShareLinkList(c *gin.Context) {
 		query = query.Where("sl.category_id = ?", categoryItemID)
 	}
 
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		result.ErrSetMsg(c, "查询分享链接失败")
+		return
+	}
+
 	type shareLinkRow struct {
 		ID               string
 		ShareCode        string
 		Title            string
 		Description      string
 		TargetType       string
-		CategoryID       string
+		CollectionID     string
 		CategoryName     string
-		CategoryItemID   string
+		CategoryID       string
 		CategoryItemName string
 		ViewCount        int64
 		Status           string
@@ -1052,7 +1054,16 @@ func GetShareLinkList(c *gin.Context) {
 		UpdatedAt        time.Time
 	}
 	var rows []shareLinkRow
-	if err := query.Order("sl.created_at desc").Scan(&rows).Error; err != nil {
+	if err := query.Select(`
+			sl.id, sl.share_code, sl.title, sl.description, sl.target_type,
+			sl.collection_id AS collection_id, c.name AS category_name,
+			sl.category_id AS category_id, ci.name AS category_item_name,
+			sl.view_count, sl.status, sl.expires_at, sl.created_at, sl.updated_at
+		`).
+		Order("sl.created_at desc").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Scan(&rows).Error; err != nil {
 		result.ErrSetMsg(c, "查询分享链接失败")
 		return
 	}
@@ -1066,8 +1077,8 @@ func GetShareLinkList(c *gin.Context) {
 			Description:    row.Description,
 			TargetType:     row.TargetType,
 			CollectionName: row.CategoryName,
-			CollectionID:   row.CategoryID,
-			CategoryID:     row.CategoryItemID,
+			CollectionID:   row.CollectionID,
+			CategoryID:     row.CategoryID,
 			CategoryName:   row.CategoryItemName,
 			ViewCount:      row.ViewCount,
 			Status:         row.Status,
@@ -1078,7 +1089,13 @@ func GetShareLinkList(c *gin.Context) {
 		})
 	}
 
-	result.OkSetData(c, list)
+	result.OkSetData(c, gin.H{
+		"list":     list,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+		"hasMore":  int64(page*pageSize) < total,
+	})
 }
 
 func DeleteShareLink(c *gin.Context) {

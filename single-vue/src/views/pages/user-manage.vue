@@ -5,7 +5,7 @@
         <div class="panel-header">
           <div>
             <h2>用户管理</h2>
-            <p>管理员可以查看平台用户，并调整用户角色。别手滑，权限这玩意儿改错了挺闹心。</p>
+            <p>集中维护平台用户信息与角色权限，支持管理员查看账号状态并进行权限配置。</p>
           </div>
           <el-button type="primary" @click="loadUsers">刷新</el-button>
         </div>

@@ -2,15 +2,15 @@
   <div class="login-page">
     <div class="hero-panel">
       <span class="hero-tag">Zanso</span>
-      <h1>资源分享后台</h1>
-      <p>统一管理用户、分类、资源和分享链接，给外链展示留个正经后台。</p>
+      <h1>数字内容管理平台</h1>
+      <p>面向企业内容展示与资源分发场景，提供用户、展册、资源和分享链接的一体化管理能力。</p>
     </div>
 
     <el-card class="login-card" shadow="never">
       <template #header>
         <div class="card-header">
           <h2>{{ authMode === 'login' ? '账号登录' : '注册账号' }}</h2>
-          <span>{{ authMode === 'login' ? '使用已创建的用户账号进入后台' : '创建普通用户账号，注册后即可登录' }}</span>
+          <span>{{ authMode === 'login' ? '使用已授权账号访问管理平台' : '创建平台用户账号并完善基础信息' }}</span>
         </div>
       </template>
 
@@ -48,7 +48,7 @@
       </el-form>
 
       <p class="helper-text">
-        {{ authMode === 'login' ? '还没有账号？' : '已有账号？' }}
+        {{ authMode === 'login' ? '暂无账号？' : '已有账号？' }}
         <el-button link type="primary" class="mode-switch" @click="toggleAuthMode">
           {{ authMode === 'login' ? '立即注册' : '返回登录' }}
         </el-button>

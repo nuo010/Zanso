@@ -4,7 +4,7 @@
       <div class="brand-mark">Z</div>
       <div>
         <div class="brand-title">{{ getTitle() }}</div>
-        <div class="brand-subtitle">用户资源分享后台</div>
+        <div class="brand-subtitle">数字内容管理平台</div>
       </div>
     </div>
 

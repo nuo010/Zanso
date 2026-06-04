@@ -6,7 +6,7 @@
         <div class="hero-content">
           <span class="eyebrow">Dashboard</span>
           <h1>欢迎回来，{{ store.user.name || '用户' }}</h1>
-          <p>这里是资源分享平台的后台首页，主要看展册规模、资源上传和分享状态。</p>
+          <p>汇总展示平台核心运营数据，帮助管理员快速掌握展册规模、资源容量与内容管理概况。</p>
         </div>
         <el-button type="primary" @click="router.push('/categories')">去管理展册</el-button>
       </div>
@@ -38,7 +38,7 @@
           <el-button link @click="router.push('/categories')">查看全部</el-button>
         </div>
       </template>
-      <el-empty v-if="store.categories.length === 0" description="还没有展册，先去创建一个" />
+      <el-empty v-if="store.categories.length === 0" description="暂无展册数据" />
       <div v-else class="category-list">
         <div v-for="item in store.categories.slice(0, 6)" :key="item.id" class="category-item">
           <strong>{{ item.name }}</strong>

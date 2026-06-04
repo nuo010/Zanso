@@ -207,7 +207,7 @@ export function updateCategory(
   });
 }
 
-export function getShareLinkList(params?: { collectionId?: string; categoryId?: string }) {
+export function getShareLinkList(params?: { collectionId?: string; categoryId?: string; page?: number; pageSize?: number }) {
   return AxiosUtil({
     url: '/api/platform/share-links',
     method: 'get',
