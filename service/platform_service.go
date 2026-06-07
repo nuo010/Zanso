@@ -1149,6 +1149,202 @@ func DeleteShareLink(c *gin.Context) {
 	result.OkSetData(c, gin.H{"id": shareLinkID})
 }
 
+func GetAnnouncementList(c *gin.Context) {
+	page, pageSize := parsePageParams(c)
+	status := strings.TrimSpace(c.Query("status"))
+	if status == "" {
+		status = model.AnnouncementStatusActive
+	}
+
+	query := db.DB.Model(&model.Announcement{}).Where("status = ?", status)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		result.ErrSetMsg(c, "查询公告失败")
+		return
+	}
+
+	var list []model.Announcement
+	if err := query.Order("created_at desc").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&list).Error; err != nil {
+		result.ErrSetMsg(c, "查询公告失败")
+		return
+	}
+
+	result.OkSetData(c, gin.H{
+		"list":     list,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+		"hasMore":  int64(page*pageSize) < total,
+	})
+}
+
+func GetAnnouncementManageList(c *gin.Context) {
+	currentUser, ok := util.GetCurrentUser(c)
+	if !ok {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+	if !isAdminUser(currentUser.ID) {
+		result.ErrSetMsg(c, "只有管理员可以管理公告")
+		return
+	}
+
+	page, pageSize := parsePageParams(c)
+	status := strings.TrimSpace(c.Query("status"))
+	query := db.DB.Model(&model.Announcement{})
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		result.ErrSetMsg(c, "查询公告失败")
+		return
+	}
+
+	var list []model.Announcement
+	if err := query.Order("created_at desc").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&list).Error; err != nil {
+		result.ErrSetMsg(c, "查询公告失败")
+		return
+	}
+
+	result.OkSetData(c, gin.H{
+		"list":     list,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+		"hasMore":  int64(page*pageSize) < total,
+	})
+}
+
+func CreateAnnouncement(c *gin.Context) {
+	currentUser, ok := util.GetCurrentUser(c)
+	if !ok {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+	if !isAdminUser(currentUser.ID) {
+		result.ErrSetMsg(c, "只有管理员可以发布公告")
+		return
+	}
+
+	var req model.CreateAnnouncementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.ErrSetMsg(c, "公告参数错误")
+		return
+	}
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		result.ErrSetMsg(c, "公告标题不能为空")
+		return
+	}
+	now := util.GetTime()
+	announcement := model.Announcement{
+		ID:        util.GetUuid(),
+		Title:     title,
+		Content:   strings.TrimSpace(req.Content),
+		Status:    normalizeAnnouncementStatus(req.Status),
+		CreatedBy: currentUser.ID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := db.DB.Create(&announcement).Error; err != nil {
+		result.ErrSetMsg(c, "创建公告失败")
+		return
+	}
+
+	result.OkSetData(c, announcement)
+}
+
+func UpdateAnnouncement(c *gin.Context) {
+	currentUser, ok := util.GetCurrentUser(c)
+	if !ok {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+	if !isAdminUser(currentUser.ID) {
+		result.ErrSetMsg(c, "只有管理员可以修改公告")
+		return
+	}
+
+	announcementID := strings.TrimSpace(c.Param("id"))
+	if announcementID == "" {
+		result.ErrSetMsg(c, "公告 ID 不能为空")
+		return
+	}
+
+	var announcement model.Announcement
+	if err := db.DB.Where("id = ?", announcementID).Take(&announcement).Error; err != nil {
+		result.ErrSetMsg(c, "公告不存在")
+		return
+	}
+
+	var req model.UpdateAnnouncementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.ErrSetMsg(c, "公告参数错误")
+		return
+	}
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		result.ErrSetMsg(c, "公告标题不能为空")
+		return
+	}
+	now := util.GetTime()
+	if err := db.DB.Model(&model.Announcement{}).Where("id = ?", announcementID).Updates(map[string]interface{}{
+		"title":      title,
+		"content":    strings.TrimSpace(req.Content),
+		"status":     normalizeAnnouncementStatus(req.Status),
+		"updated_at": now,
+	}).Error; err != nil {
+		result.ErrSetMsg(c, "更新公告失败")
+		return
+	}
+
+	announcement.Title = title
+	announcement.Content = strings.TrimSpace(req.Content)
+	announcement.Status = normalizeAnnouncementStatus(req.Status)
+	announcement.UpdatedAt = now
+	result.OkSetData(c, announcement)
+}
+
+func DeleteAnnouncement(c *gin.Context) {
+	currentUser, ok := util.GetCurrentUser(c)
+	if !ok {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+	if !isAdminUser(currentUser.ID) {
+		result.ErrSetMsg(c, "只有管理员可以删除公告")
+		return
+	}
+
+	announcementID := strings.TrimSpace(c.Param("id"))
+	if announcementID == "" {
+		result.ErrSetMsg(c, "公告 ID 不能为空")
+		return
+	}
+	if err := db.DB.Where("id = ?", announcementID).Delete(&model.Announcement{}).Error; err != nil {
+		result.ErrSetMsg(c, "删除公告失败")
+		return
+	}
+	result.OkSetData(c, gin.H{"id": announcementID})
+}
+
+func normalizeAnnouncementStatus(status string) string {
+	if strings.TrimSpace(status) == model.AnnouncementStatusActive {
+		return model.AnnouncementStatusActive
+	}
+	return model.AnnouncementStatusDraft
+}
+
 func GetShareLinkDetail(c *gin.Context) {
 	shareView, ok := loadShareView(c)
 	if !ok {

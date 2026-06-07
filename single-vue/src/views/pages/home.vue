@@ -34,15 +34,18 @@
     <el-card class="list-card" shadow="never">
       <template #header>
         <div class="list-header">
-          <span>最近展册</span>
-          <el-button link @click="router.push('/categories')">查看全部</el-button>
+          <span>系统公告</span>
+          <el-button v-if="store.isAdmin" link @click="router.push('/announcements')">公告管理</el-button>
         </div>
       </template>
-      <el-empty v-if="store.categories.length === 0" description="暂无展册数据" />
-      <div v-else class="category-list">
-        <div v-for="item in store.categories.slice(0, 6)" :key="item.id" class="category-item">
-          <strong>{{ item.name }}</strong>
-          <span>{{ item.description || '暂无描述' }}</span>
+      <el-empty v-if="announcements.length === 0" description="暂无公告" />
+      <div v-else class="announcement-list">
+        <div v-for="item in announcements" :key="item.id" class="announcement-item">
+          <div class="announcement-title">
+            <strong>{{ item.title }}</strong>
+            <span>{{ formatDate(item.createdAt) }}</span>
+          </div>
+          <p>{{ item.content || '暂无内容' }}</p>
         </div>
       </div>
     </el-card>
@@ -50,18 +53,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { userMainStore } from '@/store';
+import { getAnnouncementList } from '@/api/user';
+import { userMainStore, type Announcement } from '@/store';
 
 const store = userMainStore();
 const router = useRouter();
+const announcements = ref<Announcement[]>([]);
 
 onMounted(async () => {
   if (!store.user.id) {
     await store.loadProfile();
   }
-  await Promise.all([store.loadCategories(), store.loadDashboardStats()]);
+  await Promise.all([store.loadDashboardStats(), loadAnnouncements()]);
 });
 
 function formatFileSize(size: number) {
@@ -75,6 +80,16 @@ function formatFileSize(size: number) {
   }
   const fixed = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
   return `${value.toFixed(fixed)} ${units[unitIndex]}`;
+}
+
+async function loadAnnouncements() {
+  const res = await getAnnouncementList({ page: 1, pageSize: 6 });
+  announcements.value = res.data?.list || [];
+}
+
+function formatDate(date?: string) {
+  if (!date) return '--';
+  return date.slice(0, 10);
 }
 </script>
 
@@ -170,26 +185,40 @@ function formatFileSize(size: number) {
   color: #17315f;
 }
 
-.category-list {
+.announcement-list {
   display: grid;
   gap: 12px;
 }
 
-.category-item {
+.announcement-item {
   padding: 14px 16px;
   border-radius: 18px;
   background: #f4f8ff;
   border: 1px solid rgba(123, 162, 255, 0.12);
 }
 
-.category-item strong {
-  display: block;
+.announcement-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.announcement-title strong {
   color: #17315f;
 }
 
-.category-item span {
+.announcement-title span {
+  color: #8a9abb;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.announcement-item p {
+  margin: 8px 0 0;
   color: #6d82a7;
   font-size: 13px;
+  line-height: 1.7;
 }
 
 @media (max-width: 900px) {

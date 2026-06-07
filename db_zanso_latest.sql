@@ -167,6 +167,23 @@ CREATE TABLE `tbl_share_view_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分享访问日志表';
 
 -- ----------------------------
+-- 公告表：系统管理员发布的平台公告
+-- ----------------------------
+DROP TABLE IF EXISTS `tbl_announcement`;
+CREATE TABLE `tbl_announcement` (
+  `id` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '主键 ID',
+  `title` varchar(160) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '公告标题',
+  `content` text COLLATE utf8mb4_unicode_ci COMMENT '公告内容',
+  `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft' COMMENT '状态：draft 草稿，active 发布',
+  `created_by` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '发布人用户 ID',
+  `created_at` datetime(3) DEFAULT NULL COMMENT '创建时间',
+  `updated_at` datetime(3) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_tbl_announcement_status` (`status`),
+  KEY `idx_tbl_announcement_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='公告表';
+
+-- ----------------------------
 -- 用户表
 -- ----------------------------
 DROP TABLE IF EXISTS `tbl_user`;
@@ -219,5 +236,11 @@ INSERT INTO `tbl_user` (`id`, `name`, `login_name`, `password_hash`, `contact_na
 -- ----------------------------
 INSERT INTO `tbl_user_role` (`id`, `user_id`, `role_id`, `created_at`) VALUES
 ('user_role_admin_0000000000001', 'user_admin_000000000000000001', 'role_admin_00000000000000000001', NOW(3));
+
+-- ----------------------------
+-- 初始化公告数据
+-- ----------------------------
+INSERT INTO `tbl_announcement` (`id`, `title`, `content`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
+('announcement_welcome_0000000001', '欢迎使用 Zanso 资源分享平台', '系统公告将展示在首页下方，管理员可以在公告管理中发布、隐藏或删除公告。', 'active', 'user_admin_000000000000000001', NOW(3), NOW(3));
 
 SET FOREIGN_KEY_CHECKS = 1;

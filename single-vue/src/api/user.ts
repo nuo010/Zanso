@@ -221,3 +221,42 @@ export function deleteShareLink(id: string) {
     method: 'post',
   });
 }
+
+export function getAnnouncementList(params?: { page?: number; pageSize?: number; status?: 'draft' | 'active' }) {
+  return AxiosUtil({
+    url: '/api/platform/announcements',
+    method: 'get',
+    params,
+  });
+}
+
+export function getAnnouncementManageList(params?: { page?: number; pageSize?: number; status?: 'draft' | 'active' }) {
+  return AxiosUtil({
+    url: '/api/platform/announcements/manage',
+    method: 'get',
+    params,
+  });
+}
+
+export function createAnnouncement(data: { title: string; content?: string; status: 'draft' | 'active' }) {
+  return AxiosUtil({
+    url: '/api/platform/announcements',
+    method: 'post',
+    data,
+  });
+}
+
+export function updateAnnouncement(id: string, data: { title: string; content?: string; status: 'draft' | 'active' }) {
+  return AxiosUtil({
+    url: `/api/platform/announcements/${id}/update`,
+    method: 'post',
+    data,
+  });
+}
+
+export function deleteAnnouncement(id: string) {
+  return AxiosUtil({
+    url: `/api/platform/announcements/${id}/delete`,
+    method: 'post',
+  });
+}

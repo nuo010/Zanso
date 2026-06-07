@@ -66,6 +66,7 @@ func migration() {
 		&model.CategoryResourceRelation{},
 		&model.ShareLink{},
 		&model.ShareViewLog{},
+		&model.Announcement{},
 	)
 	if err != nil {
 		util.Log().Panic("数据库迁移失败: %v", err)

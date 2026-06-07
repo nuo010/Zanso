@@ -30,6 +30,16 @@ export interface DashboardStats {
   fileSizeTotal: number;
 }
 
+export interface Announcement {
+  id: string;
+  title: string;
+  content?: string;
+  status: 'draft' | 'active';
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const userMainStore = defineStore('main', {
   persist: {
     enabled: true,

@@ -27,6 +27,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/pages/share-manage.vue'),
       },
       {
+        path: '/announcements',
+        meta: { title: '公告管理', adminOnly: true },
+        component: () => import('@/views/pages/announcement-manage.vue'),
+      },
+      {
         path: '/users',
         meta: { title: '用户管理', adminOnly: true },
         component: () => import('@/views/pages/user-manage.vue'),

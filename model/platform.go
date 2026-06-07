@@ -11,6 +11,8 @@ const (
 	InnerCategoryStatusDraft  = "draft"
 	InnerCategoryStatusActive = "active"
 	ShareStatusActive         = "active"
+	AnnouncementStatusDraft   = "draft"
+	AnnouncementStatusActive  = "active"
 	ResourceStatusActive      = "active"
 	ShareTargetCollection     = "collection"
 	ShareTargetCategory       = "category"
@@ -166,6 +168,20 @@ func (ShareViewLog) TableName() string {
 	return "tbl_share_view_log"
 }
 
+type Announcement struct {
+	ID        string    `json:"id" gorm:"primarykey;size:32"`
+	Title     string    `json:"title" gorm:"size:160;not null"`
+	Content   string    `json:"content" gorm:"type:text"`
+	Status    string    `json:"status" gorm:"size:32;index;not null;default:draft"`
+	CreatedBy string    `json:"createdBy" gorm:"size:32;index;not null"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (Announcement) TableName() string {
+	return "tbl_announcement"
+}
+
 type CreateUserRequest struct {
 	Name         string `json:"name"`
 	LoginName    string `json:"loginName"`
@@ -225,6 +241,18 @@ type CreateShareLinkRequest struct {
 	Title        string     `json:"title"`
 	Description  string     `json:"description"`
 	ExpiresAt    *time.Time `json:"expiresAt"`
+}
+
+type CreateAnnouncementRequest struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+	Status  string `json:"status"`
+}
+
+type UpdateAnnouncementRequest struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+	Status  string `json:"status"`
 }
 
 type CategoryDetail struct {
