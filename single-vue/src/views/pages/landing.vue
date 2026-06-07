@@ -1,0 +1,604 @@
+<template>
+  <div class="landing-page">
+    <nav>
+      <div class="container">
+        <a href="#/" class="logo"><span>Z</span>anso</a>
+        <div class="nav-links">
+          <a href="#features">功能</a>
+          <a href="#advantages">优势</a>
+          <a href="#usecases">适用场景</a>
+          <a :href="appUrl" class="btn btn-primary nav-action" @click.prevent="goApp">开始使用</a>
+        </div>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="container">
+        <h1>轻松管理并分享你的<br><span>数字展册与多媒体资源</span></h1>
+        <p>Zanso 是一套轻量级数字资产管理平台。只需几分钟即可创建展册、分类整理资源、一键生成分享链接，让内容展示从未如此简单。</p>
+        <div class="hero-actions">
+          <a :href="appUrl" class="btn btn-primary btn-hero" @click.prevent="goApp">开始使用</a>
+          <a href="#features" class="btn btn-outline btn-hero">了解更多</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="container text-center">
+        <span class="section-label">核心功能</span>
+        <h2 class="section-title">一套工具，搞定展示全流程</h2>
+        <p class="section-subtitle">从创建展册到分享出去，每个环节都替你考虑好了。</p>
+      </div>
+      <div class="container">
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon feature-blue">📖</div>
+            <h3>展册管理</h3>
+            <p>自由创建多层级数字展册，支持名称、描述、封面设置与可见性开关，草稿/发布状态灵活切换。展册即作品集，一目了然。</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon feature-purple">🗂️</div>
+            <h3>分类组织</h3>
+            <p>每个展册下可按主题创建多个分类，支持独立可见性控制。图片、视频资源按分类归类，结构清晰便于查阅。</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon feature-green">🖼️</div>
+            <h3>多媒体资源上传</h3>
+            <p>图片和视频一键上传，自动识别 MIME 类型分类存储。批量上传、拖拽排序，资源墙展示所见即所得。</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon feature-orange">🔗</div>
+            <h3>一键分享链接</h3>
+            <p>生成独立的分享链接，支持整个展册或单个分类维度分享。可设过期时间，访客免登录即可浏览全部资源。</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon feature-red">📊</div>
+            <h3>数据看板</h3>
+            <p>仪表盘实时统计展册数量、资源总数与存储空间使用情况，数据一目了然，帮你掌握全局动态。</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon feature-cyan">👥</div>
+            <h3>团队协作与权限</h3>
+            <p>支持管理员与普通用户双角色体系，管理员可管理用户及角色分配，满足小团队协作场景。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="advantages" class="alt">
+      <div class="container text-center">
+        <span class="section-label">为什么选 Zanso</span>
+        <h2 class="section-title">比传统展示方式更进一步</h2>
+        <p class="section-subtitle">专为数字内容展示场景打造，而非通用网盘或者静态网站。</p>
+      </div>
+      <div class="container">
+        <div class="why-grid">
+          <div class="why-item">
+            <span class="num">1</span>
+            <h4>即建即用，零门槛上手</h4>
+            <p>无需任何开发经验，注册即可创建首个展册。从上传资源到生成分享链接，全程可视化操作。</p>
+          </div>
+          <div class="why-item">
+            <span class="num">2</span>
+            <h4>面向展示的设计理念</h4>
+            <p>不同于通用云盘，Zanso 围绕“展示”这一核心场景设计。展册-分类-资源的树形结构专为作品集、产品目录等内容形态优化。</p>
+          </div>
+          <div class="why-item">
+            <span class="num">3</span>
+            <h4>灵活的安全与可见性控制</h4>
+            <p>每个展册和分类都可独立控制可见性，分享链接支持过期时间。敏感内容随时关闭，公开内容一键分享。</p>
+          </div>
+          <div class="why-item">
+            <span class="num">4</span>
+            <h4>全栈自研，生产级基础设施</h4>
+            <p>后端 Go + Gin 高性能架构，MySQL + Redis 稳定数据层，前端 Vue 3 现代化交互体验，适配 MinIO 对象存储。</p>
+          </div>
+          <div class="why-item">
+            <span class="num">5</span>
+            <h4>免费部署，私有化可控</h4>
+            <p>开源架构设计，数据完全掌握在自己手中。支持私有化部署，敏感资源不经过第三方，安全合规。</p>
+          </div>
+          <div class="why-item">
+            <span class="num">6</span>
+            <h4>持续迭代，功能不断扩展</h4>
+            <p>覆盖完善的管理端与分享端，资源拖拽排序、分享统计、用户管理等实用功能持续更新中。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="usecases">
+      <div class="container text-center">
+        <span class="section-label">适用场景</span>
+        <h2 class="section-title">谁在用 Zanso</h2>
+        <p class="section-subtitle">无论是个人创作者还是企业团队，总有一种用法适合你。</p>
+      </div>
+      <div class="container">
+        <div class="usecase-grid">
+          <div class="usecase-card">
+            <span class="emoji">🎨</span>
+            <h4>设计作品集</h4>
+            <p>设计师按项目分类展示作品，分享链接发给客户选稿，免登录即可浏览。</p>
+          </div>
+          <div class="usecase-card">
+            <span class="emoji">📸</span>
+            <h4>摄影展览</h4>
+            <p>摄影师按拍摄主题创建展册，高清大图展示，客户选片交付一步到位。</p>
+          </div>
+          <div class="usecase-card">
+            <span class="emoji">🏷️</span>
+            <h4>产品目录</h4>
+            <p>电商运营按系列分类展示商品图与视频，内部评审或对外宣传均可快速生成分享页。</p>
+          </div>
+          <div class="usecase-card">
+            <span class="emoji">📚</span>
+            <h4>教学素材库</h4>
+            <p>教育机构按课程/章节整理课件材料，学生通过分享链接查阅，免注册、零门槛。</p>
+          </div>
+          <div class="usecase-card">
+            <span class="emoji">🏗️</span>
+            <h4>项目交付</h4>
+            <p>项目交付物按模块分类归档，客户可通过分享链接随时查看交付进度与内容明细。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="cta" class="cta">
+      <div class="container">
+        <h2>立即开始创建你的数字展册</h2>
+        <p>无需注册邀请码，几分钟即可完成从搭建到分享的全流程。</p>
+        <a :href="appUrl" class="btn btn-cta btn-hero" @click.prevent="goApp">前往控制台</a>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        <a href="#/" class="logo"><span>Z</span>anso</a>
+        <span>&copy; 2026 Zanso. All rights reserved.</span>
+      </div>
+    </footer>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const appUrl = computed(() => {
+  const baseUrl = `${window.location.origin}${window.location.pathname}`;
+  return `${baseUrl.replace(/#.*$/, '')}#/login`;
+});
+
+function goApp() {
+  router.push('/login');
+}
+</script>
+
+<style scoped lang="scss">
+.landing-page {
+  min-height: 100vh;
+  color: #1a1f36;
+  background: #fafcff;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  --brand: #2463eb;
+  --brand-dark: #1a4fc9;
+  --accent: #7c5cfc;
+  --text: #1a1f36;
+  --text-secondary: #5e6f8d;
+  --border: #e2e8f0;
+  --card-bg: #ffffff;
+  --section-bg: #f6f9ff;
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0 24px;
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+}
+
+nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  text-decoration: none;
+}
+
+.logo span {
+  color: var(--brand);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--brand);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-action {
+  padding: 8px 18px;
+  font-size: 13px;
+}
+
+.btn-primary {
+  color: #fff !important;
+  background: var(--brand);
+}
+
+.btn-primary:hover {
+  color: #fff !important;
+  background: var(--brand-dark);
+  box-shadow: 0 8px 24px rgba(36, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  color: var(--text);
+  background: transparent;
+  border: 1.5px solid var(--border);
+}
+
+.btn-outline:hover {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+.btn-hero {
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.hero {
+  padding: 100px 0 80px;
+  text-align: center;
+  background: linear-gradient(180deg, #f6f9ff 0%, #ffffff 60%);
+}
+
+.hero h1 {
+  max-width: 840px;
+  margin: 0 auto 24px;
+  font-size: clamp(40px, 6vw, 68px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -1.5px;
+}
+
+.hero h1 span {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero p {
+  max-width: 640px;
+  margin: 0 auto 40px;
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+section {
+  padding: 88px 0;
+}
+
+section.alt {
+  background: var(--section-bg);
+}
+
+.section-label {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.section-title {
+  margin-bottom: 12px;
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.8px;
+}
+
+.section-subtitle {
+  max-width: 600px;
+  margin: 0 auto 52px;
+  color: var(--text-secondary);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 28px;
+}
+
+.feature-card {
+  padding: 36px 30px 32px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.feature-card:hover {
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+}
+
+.feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  font-size: 22px;
+}
+
+.feature-blue {
+  color: #2463eb;
+  background: #eef4ff;
+}
+
+.feature-purple {
+  color: #7c5cfc;
+  background: #f3eeff;
+}
+
+.feature-green {
+  color: #0d9488;
+  background: #ecfdf5;
+}
+
+.feature-orange {
+  color: #d97706;
+  background: #fff7ed;
+}
+
+.feature-red {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.feature-cyan {
+  color: #0284c7;
+  background: #f0f9ff;
+}
+
+.feature-card h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.feature-card p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.why-item {
+  position: relative;
+  padding: 28px 24px 28px 52px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.why-item .num {
+  position: absolute;
+  top: 28px;
+  left: 20px;
+  color: var(--brand);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.why-item h4 {
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.why-item p {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.usecase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.usecase-card {
+  padding: 28px 22px;
+  text-align: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.usecase-card .emoji {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 36px;
+}
+
+.usecase-card h4 {
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.usecase-card p {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.cta {
+  padding: 80px 0;
+  text-align: center;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%);
+}
+
+.cta h2 {
+  margin-bottom: 12px;
+  color: #fff;
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 700;
+}
+
+.cta p {
+  margin-bottom: 32px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 17px;
+}
+
+.btn-cta {
+  color: var(--brand);
+  background: #fff;
+}
+
+.btn-cta:hover {
+  color: var(--brand);
+  background: #f4f8ff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+footer {
+  padding: 40px 0;
+  border-top: 1px solid var(--border);
+}
+
+footer .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+footer .logo {
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+
+  .hero {
+    padding: 60px 0 48px;
+  }
+
+  section {
+    padding: 56px 0;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hero-actions .btn {
+    justify-content: center;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .feature-grid {
+    gap: 20px;
+  }
+
+  .why-item {
+    padding-left: 44px;
+  }
+
+  .why-item .num {
+    left: 16px;
+  }
+
+  footer .container {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+}
+</style>

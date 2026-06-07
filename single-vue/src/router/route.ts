@@ -3,8 +3,12 @@ import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
+    meta: { title: 'Zanso - 数字展册管理与分享平台', public: true },
+    component: () => import('@/views/pages/landing.vue'),
+  },
+  {
+    path: '/app',
     component: () => import('@/layouts/admin.vue'),
-    redirect: '/dashboard',
     children: [
       {
         path: '/dashboard',

@@ -12,7 +12,7 @@ const store = userMainStore();
 const route = useRoute();
 
 onMounted(async () => {
-  if (route.path === '/login' || route.meta.public) return;
+  if (route.meta.public) return;
   const token = getToken();
   if (!token) return;
   if (!store.user.id) {

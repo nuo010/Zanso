@@ -153,7 +153,9 @@
       footer .container { flex-direction: column; gap: 12px; text-align: center; }
     }
   </style>
-  <script>var APP_URL = "https://zanso.aaxx.uk:50000/#/login";</script></head>
+  <script>
+    var APP_URL = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + '#/login';
+  </script></head>
 <body>
 
   <nav>
