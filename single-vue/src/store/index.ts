@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { globalMenuAsideWidthBig, globalMenuAsideWidthLittle } from '@/util/constants';
 import { getCurrentUser, getCurrentUserCategories, getDashboardStats } from '@/api/user';
 
 export interface PlatformUser {
@@ -11,6 +10,8 @@ export interface PlatformUser {
   status?: string;
   roleCodes?: string[];
   roleNames?: string[];
+  resourceCount?: number;
+  fileSizeTotal?: number;
 }
 
 export interface Collection {
@@ -50,11 +51,9 @@ export const userMainStore = defineStore('main', {
       resourceCount: 0,
       fileSizeTotal: 0,
     } as DashboardStats,
-    asideWidth: globalMenuAsideWidthBig,
   }),
   getters: {
     getUserId: (state) => state.user.id || '',
-    isCollapse: (state) => state.asideWidth !== globalMenuAsideWidthBig,
     isAdmin: (state) => state.user.roleCodes?.includes('admin') || false,
   },
   actions: {
@@ -82,9 +81,6 @@ export const userMainStore = defineStore('main', {
     },
     setUserStore(user: PlatformUser) {
       this.user = user;
-    },
-    handleAsideWidth() {
-      this.asideWidth = this.asideWidth === globalMenuAsideWidthBig ? globalMenuAsideWidthLittle : globalMenuAsideWidthBig;
     },
     resetAll() {
       this.$reset();

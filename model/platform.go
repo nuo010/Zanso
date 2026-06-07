@@ -252,16 +252,18 @@ type DashboardStats struct {
 }
 
 type UserWithRoles struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	LoginName    string    `json:"loginName"`
-	ContactName  string    `json:"contactName"`
-	ContactPhone string    `json:"contactPhone"`
-	Status       string    `json:"status"`
-	RoleCodes    []string  `json:"roleCodes"`
-	RoleNames    []string  `json:"roleNames"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	LoginName     string    `json:"loginName"`
+	ContactName   string    `json:"contactName"`
+	ContactPhone  string    `json:"contactPhone"`
+	Status        string    `json:"status"`
+	RoleCodes     []string  `json:"roleCodes"`
+	RoleNames     []string  `json:"roleNames"`
+	ResourceCount int64     `json:"resourceCount"`
+	FileSizeTotal int64     `json:"fileSizeTotal"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 type ShareLinkListItem struct {

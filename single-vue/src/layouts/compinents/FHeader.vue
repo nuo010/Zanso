@@ -9,9 +9,6 @@
     </div>
 
     <div class="header-actions">
-      <el-button circle plain @click="store.handleAsideWidth()">
-        <el-icon><Operation /></el-icon>
-      </el-button>
       <el-dropdown @command="handleCommand">
         <div class="user-box">
           <el-avatar :size="34">{{ store.user.name?.slice(0, 1) || 'U' }}</el-avatar>

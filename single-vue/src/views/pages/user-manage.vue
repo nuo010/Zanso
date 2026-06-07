@@ -29,6 +29,16 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="资源数量" width="120" align="center">
+          <template #default="{ row }">
+            <span class="resource-count">{{ row.resourceCount || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="占用空间" width="140">
+          <template #default="{ row }">
+            <span class="resource-size">{{ formatFileSize(row.fileSizeTotal) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="修改角色" width="180" align="center">
           <template #default="{ row }">
             <el-select
@@ -73,6 +83,20 @@ async function loadUsers() {
 
 function getPrimaryRole(user: PlatformUser): 'admin' | 'user' {
   return user.roleCodes?.includes('admin') ? 'admin' : 'user';
+}
+
+function formatFileSize(size?: number) {
+  const fileSize = Number(size || 0);
+  if (!fileSize) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = fileSize;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const fixed = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+  return `${value.toFixed(fixed)} ${units[unitIndex]}`;
 }
 
 async function handleRoleChange(user: PlatformUser, roleCode: 'admin' | 'user') {
@@ -148,5 +172,15 @@ async function handleRoleChange(user: PlatformUser, roleCode: 'admin' | 'user') 
 
 .role-select {
   width: 120px;
+}
+
+.resource-count {
+  font-weight: 700;
+  color: #17315f;
+}
+
+.resource-size {
+  color: #47658f;
+  font-weight: 600;
 }
 </style>

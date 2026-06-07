@@ -221,13 +221,26 @@ func buildUsersWithRoles(users []model.User) ([]model.UserWithRoles, error) {
 		Code   string
 		Name   string
 	}
+	type resourceStatRow struct {
+		UserID        string
+		ResourceCount int64
+		FileSizeTotal int64
+	}
 	var roleRows []roleRow
+	var resourceStatRows []resourceStatRow
 	if len(userIDs) > 0 {
 		if err := db.DB.Table("tbl_user_role AS ur").
 			Select("ur.user_id, r.code, r.name").
 			Joins("JOIN tbl_role AS r ON r.id = ur.role_id").
 			Where("ur.user_id IN ?", userIDs).
 			Scan(&roleRows).Error; err != nil {
+			return nil, err
+		}
+		if err := db.DB.Model(&model.Resource{}).
+			Select("user_id, COUNT(*) AS resource_count, COALESCE(SUM(file_size), 0) AS file_size_total").
+			Where("user_id IN ? AND status = ?", userIDs, model.ResourceStatusActive).
+			Group("user_id").
+			Scan(&resourceStatRows).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -238,20 +251,27 @@ func buildUsersWithRoles(users []model.User) ([]model.UserWithRoles, error) {
 		roleCodeMap[row.UserID] = append(roleCodeMap[row.UserID], row.Code)
 		roleNameMap[row.UserID] = append(roleNameMap[row.UserID], row.Name)
 	}
+	resourceStatMap := make(map[string]resourceStatRow, len(users))
+	for _, row := range resourceStatRows {
+		resourceStatMap[row.UserID] = row
+	}
 
 	resultList := make([]model.UserWithRoles, 0, len(users))
 	for _, user := range users {
+		resourceStat := resourceStatMap[user.ID]
 		resultList = append(resultList, model.UserWithRoles{
-			ID:           user.ID,
-			Name:         user.Name,
-			LoginName:    user.LoginName,
-			ContactName:  user.ContactName,
-			ContactPhone: user.ContactPhone,
-			Status:       user.Status,
-			RoleCodes:    roleCodeMap[user.ID],
-			RoleNames:    roleNameMap[user.ID],
-			CreatedAt:    user.CreatedAt,
-			UpdatedAt:    user.UpdatedAt,
+			ID:            user.ID,
+			Name:          user.Name,
+			LoginName:     user.LoginName,
+			ContactName:   user.ContactName,
+			ContactPhone:  user.ContactPhone,
+			Status:        user.Status,
+			RoleCodes:     roleCodeMap[user.ID],
+			RoleNames:     roleNameMap[user.ID],
+			ResourceCount: resourceStat.ResourceCount,
+			FileSizeTotal: resourceStat.FileSizeTotal,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
 		})
 	}
 	return resultList, nil

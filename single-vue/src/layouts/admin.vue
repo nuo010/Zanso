@@ -4,7 +4,7 @@
       <f-header />
     </el-header>
     <el-container class="layout-body">
-      <el-aside :width="store.asideWidth" class="layout-aside">
+      <el-aside width="220px" class="layout-aside">
         <f-menu />
       </el-aside>
       <el-main class="layout-main">
@@ -17,9 +17,6 @@
 <script lang="ts" setup>
 import FHeader from './compinents/FHeader.vue';
 import FMenu from './compinents/FMenu.vue';
-import { userMainStore } from '@/store';
-
-const store = userMainStore();
 </script>
 
 <style scoped lang="scss">

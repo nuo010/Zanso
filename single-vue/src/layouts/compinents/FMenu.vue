@@ -2,8 +2,6 @@
   <div class="menu-wrap">
     <el-menu
       :default-active="route.path"
-      :collapse="store.isCollapse"
-      :collapse-transition="false"
       class="menu-panel"
       @select="handleSelect"
     >
