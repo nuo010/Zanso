@@ -2,11 +2,11 @@
   <div class="landing-page">
     <nav>
       <div class="container">
-        <a href="#/" class="logo"><span>Z</span>anso</a>
+        <a href="#" class="logo" @click.prevent="scrollToTop"><span>Z</span>anso</a>
         <div class="nav-links">
-          <a href="#features">功能</a>
-          <a href="#advantages">优势</a>
-          <a href="#usecases">适用场景</a>
+          <a href="#" @click.prevent="scrollToSection('features')">功能</a>
+          <a href="#" @click.prevent="scrollToSection('advantages')">优势</a>
+          <a href="#" @click.prevent="scrollToSection('usecases')">适用场景</a>
           <a :href="appUrl" class="btn btn-primary nav-action" @click.prevent="goApp">开始使用</a>
         </div>
       </div>
@@ -18,7 +18,7 @@
         <p>Zanso 是一套轻量级数字资产管理平台。只需几分钟即可创建展册、分类整理资源、一键生成分享链接，让内容展示从未如此简单。</p>
         <div class="hero-actions">
           <a :href="appUrl" class="btn btn-primary btn-hero" @click.prevent="goApp">开始使用</a>
-          <a href="#features" class="btn btn-outline btn-hero">了解更多</a>
+          <a href="#" class="btn btn-outline btn-hero" @click.prevent="scrollToSection('features')">了解更多</a>
         </div>
       </div>
     </section>
@@ -154,7 +154,7 @@
 
     <footer>
       <div class="container">
-        <a href="#/" class="logo"><span>Z</span>anso</a>
+        <a href="#" class="logo" @click.prevent="scrollToTop"><span>Z</span>anso</a>
         <span>&copy; 2026 Zanso. All rights reserved.</span>
       </div>
     </footer>
@@ -174,6 +174,17 @@ const appUrl = computed(() => {
 
 function goApp() {
   router.push('/login');
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  });
 }
 </script>
 

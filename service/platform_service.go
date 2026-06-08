@@ -1,9 +1,12 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"mime/multipart"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,6 +18,7 @@ import (
 	"zanso/util"
 
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
@@ -645,6 +649,13 @@ func GetDashboardStats(c *gin.Context) {
 		result.ErrSetMsg(c, "查询首页统计失败")
 		return
 	}
+	if err := db.DB.Model(&model.ResourceAccessLog{}).
+		Where("user_id = ?", currentUserID).
+		Select("COALESCE(SUM(traffic_size), 0)").
+		Scan(&stats.ExternalTrafficSize).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
 
 	result.OkSetData(c, stats)
 }
@@ -944,6 +955,41 @@ func DeleteResource(c *gin.Context) {
 	removeResourceFiles(c, []string{resource.StoragePath})
 
 	result.OkSetData(c, gin.H{"id": resourceID})
+}
+
+func GetPublicResource(c *gin.Context) {
+	resourceID := strings.TrimSpace(c.Param("id"))
+	if resourceID == "" {
+		result.ErrSetMsg(c, "资源 ID 不能为空")
+		return
+	}
+	shareCode := strings.TrimSpace(c.Query("shareCode"))
+	if shareCode == "" {
+		result.ErrSetMsg(c, "分享码不能为空")
+		return
+	}
+
+	var resource model.Resource
+	var shareLink model.ShareLink
+	if err := db.DB.Where("id = ? AND status = ?", resourceID, model.ResourceStatusActive).Take(&resource).Error; err != nil {
+		result.ErrSetMsg(c, "资源不存在")
+		return
+	}
+	if err := loadActiveShareLinkByCode(shareCode, &shareLink); err != nil {
+		result.ErrSetMsg(c, err.Error())
+		return
+	}
+	if !shareLinkCanAccessResource(shareLink, resource.ID) {
+		result.ErrSetMsg(c, "资源不属于当前分享链接")
+		return
+	}
+
+	if err := serveResourceFile(c, resource); err != nil {
+		util.Log().Error("读取公开资源失败: %v", err)
+		result.ErrSetMsg(c, "读取资源失败")
+		return
+	}
+	recordResourceAccess(c, resource, shareLink)
 }
 
 func CreateShareLink(c *gin.Context) {
@@ -1345,6 +1391,105 @@ func normalizeAnnouncementStatus(status string) string {
 	return model.AnnouncementStatusDraft
 }
 
+func loadActiveShareLinkByCode(shareCode string, shareLink *model.ShareLink) error {
+	if err := db.DB.Where("share_code = ? AND status = ?", shareCode, model.ShareStatusActive).Take(shareLink).Error; err != nil {
+		return fmt.Errorf("分享链接不存在")
+	}
+	if shareLink.ExpiresAt != nil && shareLink.ExpiresAt.Before(util.GetTime()) {
+		return fmt.Errorf("分享链接已过期")
+	}
+
+	var category model.Category
+	if err := db.DB.Where("id = ?", shareLink.CategoryID).Take(&category).Error; err != nil || !category.Visible {
+		return fmt.Errorf("分享内容当前不可查看")
+	}
+	if shareLink.TargetType == model.ShareTargetCategory && shareLink.CategoryItemID != "" {
+		var item model.CategoryItem
+		if err := db.DB.Where("id = ? AND collection_id = ?", shareLink.CategoryItemID, shareLink.CategoryID).Take(&item).Error; err != nil || !item.Visible {
+			return fmt.Errorf("分享内容当前不可查看")
+		}
+	}
+	return nil
+}
+
+func shareLinkCanAccessResource(shareLink model.ShareLink, resourceID string) bool {
+	query := db.DB.Model(&model.CategoryResourceRelation{}).
+		Where("resource_id = ? AND collection_id = ?", resourceID, shareLink.CategoryID)
+	if shareLink.TargetType == model.ShareTargetCategory {
+		query = query.Where("category_id = ?", shareLink.CategoryItemID)
+	}
+	var count int64
+	_ = query.Count(&count).Error
+	return count > 0
+}
+
+func serveResourceFile(c *gin.Context, resource model.Resource) error {
+	contentType := strings.TrimSpace(resource.MimeType)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%q", resource.FileName))
+	c.Header("Cache-Control", "public, max-age=300")
+	c.Header("Accept-Ranges", "bytes")
+
+	if db.UseMinioStorage() {
+		return serveMinioResource(c, resource)
+	}
+	return serveLocalResource(c, resource)
+}
+
+func serveLocalResource(c *gin.Context, resource model.Resource) error {
+	cleanPath := strings.TrimSpace(resource.StoragePath)
+	if cleanPath == "" {
+		return fmt.Errorf("资源存储路径为空")
+	}
+	fullPath := filepath.Join(getUploadLocalDir(), filepath.FromSlash(cleanPath))
+	if _, err := os.Stat(fullPath); err != nil {
+		return err
+	}
+	c.File(fullPath)
+	return nil
+}
+
+func serveMinioResource(c *gin.Context, resource model.Resource) error {
+	if db.MinioClient == nil || db.MinioBucket == "" {
+		return fmt.Errorf("MinIO 未初始化")
+	}
+	objectName := db.TrimMinioBucketPrefix(resource.StoragePath)
+	object, err := db.MinioClient.GetObject(c.Request.Context(), db.MinioBucket, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		return err
+	}
+	defer object.Close()
+	if _, err = io.Copy(c.Writer, object); err != nil && !isClientDisconnected(c.Request.Context()) {
+		return err
+	}
+	return nil
+}
+
+func recordResourceAccess(c *gin.Context, resource model.Resource, shareLink model.ShareLink) {
+	trafficSize := resource.FileSize
+	if trafficSize < 0 {
+		trafficSize = 0
+	}
+	_ = db.DB.Create(&model.ResourceAccessLog{
+		ID:          util.GetUuid(),
+		ResourceID:  resource.ID,
+		ShareLinkID: shareLink.ID,
+		UserID:      resource.UserID,
+		TrafficSize: trafficSize,
+		ViewerIP:    c.ClientIP(),
+		UserAgent:   c.GetHeader("User-Agent"),
+		Referer:     c.GetHeader("Referer"),
+		CreatedAt:   util.GetTime(),
+	}).Error
+}
+
+func isClientDisconnected(ctx context.Context) bool {
+	return ctx.Err() == context.Canceled || ctx.Err() == context.DeadlineExceeded
+}
+
 func GetShareLinkDetail(c *gin.Context) {
 	shareView, ok := loadShareView(c)
 	if !ok {
@@ -1370,12 +1515,8 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 	}
 
 	var shareLink model.ShareLink
-	if err := db.DB.Where("share_code = ? AND status = ?", shareCode, model.ShareStatusActive).Take(&shareLink).Error; err != nil {
-		result.ErrSetMsg(c, "分享链接不存在")
-		return model.ShareView{}, false
-	}
-	if shareLink.ExpiresAt != nil && shareLink.ExpiresAt.Before(util.GetTime()) {
-		result.ErrSetMsg(c, "分享链接已过期")
+	if err := loadActiveShareLinkByCode(shareCode, &shareLink); err != nil {
+		result.ErrSetMsg(c, err.Error())
 		return model.ShareView{}, false
 	}
 
@@ -1421,6 +1562,7 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 		CreatedAt:      util.GetTime(),
 	}).Error
 	shareLink.ViewCount++
+	resourceList = withShareResourceProxyURLs(c, resourceList, shareCode)
 
 	return model.ShareView{
 		ShareLink:    shareLink,
@@ -1430,7 +1572,19 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 		User:         user,
 		ResourceList: resourceList,
 		ShareURL:     buildShareURL(c, shareCode),
+		ShareCode:    shareCode,
 	}, true
+}
+
+func withShareResourceProxyURLs(c *gin.Context, resourceList []model.CategoryResourceRelation, shareCode string) []model.CategoryResourceRelation {
+	for index := range resourceList {
+		resourceID := strings.TrimSpace(resourceList[index].ResourceID)
+		if resourceID == "" {
+			continue
+		}
+		resourceList[index].URL = buildPublicResourceURL(resourceID, shareCode)
+	}
+	return resourceList
 }
 
 func inferResourceType(contentType string, filename string) string {
@@ -1465,6 +1619,14 @@ func buildPublicAssetURL(c *gin.Context, relativePath string) string {
 		return baseURL + "/" + cleanPath
 	}
 	return fmt.Sprintf("%s/uploads/%s", requestBaseURL(c), cleanPath)
+}
+
+func buildPublicResourceURL(resourceID string, shareCode string) string {
+	return fmt.Sprintf(
+		"/api/platform/public/resources/%s?shareCode=%s",
+		url.PathEscape(resourceID),
+		url.QueryEscape(shareCode),
+	)
 }
 
 func saveUploadedResource(c *gin.Context, file *multipart.FileHeader, storagePath string) (string, error) {

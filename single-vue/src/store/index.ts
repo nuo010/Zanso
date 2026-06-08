@@ -28,6 +28,7 @@ export interface DashboardStats {
   collectionCount: number;
   resourceCount: number;
   fileSizeTotal: number;
+  externalTrafficSize: number;
 }
 
 export interface Announcement {
@@ -60,6 +61,7 @@ export const userMainStore = defineStore('main', {
       collectionCount: 0,
       resourceCount: 0,
       fileSizeTotal: 0,
+      externalTrafficSize: 0,
     } as DashboardStats,
   }),
   getters: {
@@ -86,6 +88,7 @@ export const userMainStore = defineStore('main', {
         collectionCount: res.data?.collectionCount || 0,
         resourceCount: res.data?.resourceCount || 0,
         fileSizeTotal: res.data?.fileSizeTotal || 0,
+        externalTrafficSize: res.data?.externalTrafficSize || 0,
       };
       return this.dashboardStats;
     },

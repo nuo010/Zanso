@@ -29,6 +29,10 @@
         <span>文件占用大小</span>
         <strong>{{ formatFileSize(store.dashboardStats.fileSizeTotal) }}</strong>
       </article>
+      <article class="stat-card">
+        <span>外链流量</span>
+        <strong>{{ formatFileSize(store.dashboardStats.externalTrafficSize) }}</strong>
+      </article>
     </section>
 
     <el-card class="list-card" shadow="never">
@@ -147,7 +151,7 @@ function formatDate(date?: string) {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
 

@@ -1,5 +1,5 @@
 import { ElNotification } from 'element-plus';
-import { appTitle, resourceDownloadLocation } from '@/util/constants';
+import { appTitle, resourceDownloadLocation, serverLocation } from '@/util/constants';
 
 export function toast(message: string, type: 'success' | 'warning' | 'info' | 'error') {
   ElNotification({
@@ -61,5 +61,8 @@ export function resolveResourceURL(pathOrUrl: string): string {
     return pathOrUrl;
   }
   const cleanPath = pathOrUrl.replace(/^\/+/, '');
+  if (cleanPath.startsWith('api/platform/public/resources/')) {
+    return `${getBaseURL()}${serverLocation}/${cleanPath}`;
+  }
   return `${getResourceDownloadBase()}/${cleanPath}`;
 }

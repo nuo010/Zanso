@@ -153,6 +153,7 @@ CREATE TABLE `tbl_share_view_log` (
   `category_id` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '分类 ID',
   `target_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '分享目标类型：collection/category',
   `user_id` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '所属用户 ID',
+  `traffic_size` bigint(20) NOT NULL DEFAULT '0' COMMENT '本次外链访问消耗流量，单位字节',
   `viewer_ip` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '访问者 IP',
   `user_agent` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '访问者 UA',
   `referer` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '来源页面',
@@ -165,6 +166,27 @@ CREATE TABLE `tbl_share_view_log` (
   KEY `idx_tbl_share_view_log_created_at` (`created_at`),
   KEY `idx_tbl_share_view_log_target_type` (`target_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分享访问日志表';
+
+-- ----------------------------
+-- 资源外链访问日志表
+-- ----------------------------
+DROP TABLE IF EXISTS `tbl_resource_access_log`;
+CREATE TABLE `tbl_resource_access_log` (
+  `id` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '主键 ID',
+  `resource_id` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '资源 ID',
+  `share_link_id` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '分享链接 ID',
+  `user_id` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '所属用户 ID',
+  `traffic_size` bigint(20) NOT NULL DEFAULT '0' COMMENT '本次资源外链访问消耗流量，单位字节',
+  `viewer_ip` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '访问者 IP',
+  `user_agent` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '访问者 UA',
+  `referer` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '来源页面',
+  `created_at` datetime(3) DEFAULT NULL COMMENT '访问时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_tbl_resource_access_log_resource_id` (`resource_id`),
+  KEY `idx_tbl_resource_access_log_share_link_id` (`share_link_id`),
+  KEY `idx_tbl_resource_access_log_user_id` (`user_id`),
+  KEY `idx_tbl_resource_access_log_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='资源外链访问日志表';
 
 -- ----------------------------
 -- 公告表：系统管理员发布的平台公告

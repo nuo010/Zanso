@@ -66,6 +66,7 @@ func migration() {
 		&model.CategoryResourceRelation{},
 		&model.ShareLink{},
 		&model.ShareViewLog{},
+		&model.ResourceAccessLog{},
 		&model.Announcement{},
 	)
 	if err != nil {
