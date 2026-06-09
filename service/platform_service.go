@@ -638,10 +638,32 @@ func GetDashboardStats(c *gin.Context) {
 		result.ErrSetMsg(c, "查询首页统计失败")
 		return
 	}
+	if err := db.DB.Model(&model.Resource{}).Where("user_id = ? AND resource_type = ?", currentUserID, "image").Count(&stats.ImageCount).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
+	if err := db.DB.Model(&model.Resource{}).Where("user_id = ? AND resource_type = ?", currentUserID, "video").Count(&stats.VideoCount).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
 	if err := db.DB.Model(&model.Resource{}).
 		Where("user_id = ?", currentUserID).
 		Select("COALESCE(SUM(file_size), 0)").
 		Scan(&stats.FileSizeTotal).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
+	if err := db.DB.Model(&model.Resource{}).
+		Where("user_id = ? AND resource_type = ?", currentUserID, "image").
+		Select("COALESCE(SUM(file_size), 0)").
+		Scan(&stats.ImageSizeTotal).Error; err != nil {
+		result.ErrSetMsg(c, "查询首页统计失败")
+		return
+	}
+	if err := db.DB.Model(&model.Resource{}).
+		Where("user_id = ? AND resource_type = ?", currentUserID, "video").
+		Select("COALESCE(SUM(file_size), 0)").
+		Scan(&stats.VideoSizeTotal).Error; err != nil {
 		result.ErrSetMsg(c, "查询首页统计失败")
 		return
 	}

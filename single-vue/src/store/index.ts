@@ -27,7 +27,11 @@ export interface Collection {
 export interface DashboardStats {
   collectionCount: number;
   resourceCount: number;
+  imageCount: number;
+  videoCount: number;
   fileSizeTotal: number;
+  imageSizeTotal: number;
+  videoSizeTotal: number;
 }
 
 export interface Announcement {
@@ -59,7 +63,11 @@ export const userMainStore = defineStore('main', {
     dashboardStats: {
       collectionCount: 0,
       resourceCount: 0,
+      imageCount: 0,
+      videoCount: 0,
       fileSizeTotal: 0,
+      imageSizeTotal: 0,
+      videoSizeTotal: 0,
     } as DashboardStats,
   }),
   getters: {
@@ -85,7 +93,11 @@ export const userMainStore = defineStore('main', {
       this.dashboardStats = {
         collectionCount: res.data?.collectionCount || 0,
         resourceCount: res.data?.resourceCount || 0,
+        imageCount: res.data?.imageCount || 0,
+        videoCount: res.data?.videoCount || 0,
         fileSizeTotal: res.data?.fileSizeTotal || 0,
+        imageSizeTotal: res.data?.imageSizeTotal || 0,
+        videoSizeTotal: res.data?.videoSizeTotal || 0,
       };
       return this.dashboardStats;
     },

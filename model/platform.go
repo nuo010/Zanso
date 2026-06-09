@@ -276,7 +276,11 @@ type PageResult struct {
 type DashboardStats struct {
 	CollectionCount int64 `json:"collectionCount"`
 	ResourceCount   int64 `json:"resourceCount"`
+	ImageCount      int64 `json:"imageCount"`
+	VideoCount      int64 `json:"videoCount"`
 	FileSizeTotal   int64 `json:"fileSizeTotal"`
+	ImageSizeTotal  int64 `json:"imageSizeTotal"`
+	VideoSizeTotal  int64 `json:"videoSizeTotal"`
 }
 
 type UserWithRoles struct {

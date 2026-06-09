@@ -1,33 +1,39 @@
 <template>
   <div class="dashboard">
-    <section class="hero-card">
-      <div class="hero-accent"></div>
-      <div class="hero-body">
-        <div class="hero-content">
-          <span class="eyebrow">Dashboard</span>
-          <h1>欢迎回来，{{ store.user.name || '用户' }}</h1>
-          <p>汇总展示平台核心运营数据，帮助管理员快速掌握展册规模、资源容量与内容管理概况。</p>
-        </div>
-        <el-button type="primary" @click="router.push('/categories')">去管理展册</el-button>
-      </div>
-    </section>
-
     <section class="stats-grid">
       <article class="stat-card">
-        <span>当前用户</span>
-        <strong>{{ store.user.loginName || '--' }}</strong>
+        <span class="stat-label">当前用户</span>
+        <strong class="stat-value">{{ store.user.loginName || '--' }}</strong>
       </article>
       <article class="stat-card">
-        <span>展册数量</span>
-        <strong>{{ store.dashboardStats.collectionCount }}</strong>
+        <span class="stat-label">展册数量</span>
+        <strong class="stat-value">{{ store.dashboardStats.collectionCount }}</strong>
       </article>
-      <article class="stat-card">
-        <span>资源数量</span>
-        <strong>{{ store.dashboardStats.resourceCount }}</strong>
+      <article class="stat-card stat-card--media">
+        <span class="stat-label">图片资源</span>
+        <div class="stat-pair">
+          <div class="stat-metric">
+            <strong>{{ store.dashboardStats.imageCount }}</strong>
+            <small>数量</small>
+          </div>
+          <div class="stat-metric">
+            <strong>{{ formatFileSize(store.dashboardStats.imageSizeTotal) }}</strong>
+            <small>占用大小</small>
+          </div>
+        </div>
       </article>
-      <article class="stat-card">
-        <span>文件占用大小</span>
-        <strong>{{ formatFileSize(store.dashboardStats.fileSizeTotal) }}</strong>
+      <article class="stat-card stat-card--media">
+        <span class="stat-label">视频资源</span>
+        <div class="stat-pair">
+          <div class="stat-metric">
+            <strong>{{ store.dashboardStats.videoCount }}</strong>
+            <small>数量</small>
+          </div>
+          <div class="stat-metric">
+            <strong>{{ formatFileSize(store.dashboardStats.videoSizeTotal) }}</strong>
+            <small>占用大小</small>
+          </div>
+        </div>
       </article>
     </section>
 
@@ -96,85 +102,89 @@ function formatDate(date?: string) {
 <style scoped lang="scss">
 .dashboard {
   display: grid;
-  gap: 20px;
-}
-
-.hero-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 0;
-  padding: 0;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(123, 162, 255, 0.16);
-  box-shadow: 0 24px 60px rgba(36, 84, 170, 0.08);
-  overflow: hidden;
-}
-
-.hero-accent {
-  width: 4px;
-  flex-shrink: 0;
-  background: linear-gradient(180deg, #2f6bff, #69b7ff);
-}
-
-.hero-body {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  padding: 28px;
-  flex: 1;
-}
-
-.eyebrow {
-  color: #2f6bff;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-.hero-body h1 {
-  margin: 10px 0 8px;
-  font-size: 34px;
-  color: #17315f;
-}
-
-.hero-body p {
-  max-width: 520px;
-  color: #6d82a7;
+  gap: 18px;
+  max-width: 1180px;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .stat-card {
-  padding: 22px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(123, 162, 255, 0.16);
-  box-shadow: 0 14px 32px rgba(60, 102, 190, 0.08);
+  min-height: 118px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(117, 151, 210, 0.18);
+  box-shadow: 0 10px 24px rgba(48, 86, 150, 0.06);
 }
 
-.stat-card span {
+.stat-label {
   display: block;
-  color: #6d82a7;
-  margin-bottom: 12px;
+  color: #6f82a5;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.stat-card strong {
-  font-size: 28px;
+.stat-value {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 26px;
+  line-height: 1.15;
   color: #17315f;
 }
 
+.stat-card--media {
+  padding-bottom: 16px;
+}
+
+.stat-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stat-metric {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f5f8fd;
+  border: 1px solid rgba(128, 159, 214, 0.12);
+}
+
+.stat-metric strong {
+  display: block;
+  color: #17315f;
+  font-size: 22px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.stat-metric small {
+  display: block;
+  margin-top: 8px;
+  color: #7f91b1;
+  font-size: 12px;
+}
+
 .list-card {
-  border-radius: 24px;
-  border: 1px solid rgba(123, 162, 255, 0.16);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 20px 46px rgba(36, 84, 170, 0.08);
+  width: min(760px, 100%);
+  border-radius: 14px;
+  border: 1px solid rgba(117, 151, 210, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 10px 24px rgba(48, 86, 150, 0.06);
+}
+
+.list-card :deep(.el-card__header) {
+  padding: 16px 20px;
+}
+
+.list-card :deep(.el-card__body) {
+  padding: 16px 20px 20px;
 }
 
 .list-header {
@@ -187,13 +197,13 @@ function formatDate(date?: string) {
 
 .announcement-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .announcement-item {
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: #f4f8ff;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f5f8fd;
   border: 1px solid rgba(123, 162, 255, 0.12);
 }
 
@@ -215,22 +225,21 @@ function formatDate(date?: string) {
 }
 
 .announcement-item p {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: #6d82a7;
   font-size: 13px;
   line-height: 1.7;
 }
 
 @media (max-width: 900px) {
-  .hero-card,
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
   .stats-grid {
     grid-template-columns: 1fr;
-    display: grid;
-  }
-
-  .hero-body {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 </style>
