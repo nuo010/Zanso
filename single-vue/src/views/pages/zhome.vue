@@ -76,13 +76,31 @@
                                   hide-on-click-modal
                                   loading="lazy"
                                 />
+                                <button
+                                  v-else-if="playingResourceId !== resource.id"
+                                  class="resource-video-cover"
+                                  type="button"
+                                  @click.stop="playResourceVideo(resource.id)"
+                                >
+                                  <img
+                                    v-if="resource.posterUrl"
+                                    :src="resource.posterUrl"
+                                    :alt="resource.fileName"
+                                    loading="lazy"
+                                  />
+                                  <span v-else class="resource-video-placeholder">{{ resource.fileName }}</span>
+                                  <span class="resource-video-play" aria-hidden="true"></span>
+                                </button>
                                 <video
                                   v-else
                                   :src="resource.fileUrl"
                                   :poster="resource.posterUrl"
                                   controls
+                                  autoplay
                                   playsinline
                                   preload="metadata"
+                                  @click.stop
+                                  @ended="stopResourceVideo"
                                 ></video>
                               </div>
                               <div class="resource-info">
@@ -314,6 +332,39 @@
           :on-remove="handleFileRemove"
         >
           <el-icon><Plus /></el-icon>
+          <template #file="{ file }">
+            <div class="upload-preview-card">
+              <img
+                v-if="getUploadPreview(file)?.type === 'image'"
+                class="upload-preview-card__media"
+                :src="getUploadPreview(file)?.url"
+                :alt="file.name"
+              />
+              <template v-else-if="getUploadPreview(file)?.type === 'video'">
+                <img
+                  v-if="getUploadPreview(file)?.posterUrl"
+                  class="upload-preview-card__media"
+                  :src="getUploadPreview(file)?.posterUrl"
+                  :alt="file.name"
+                />
+                <div v-else class="upload-preview-card__placeholder">
+                  <span class="upload-preview-card__play"></span>
+                </div>
+              </template>
+              <div v-else class="upload-preview-card__placeholder">
+                <span>{{ getFileExt(file.name) }}</span>
+              </div>
+              <span class="upload-preview-card__name" :title="file.name">{{ file.name }}</span>
+              <button
+                class="upload-preview-card__remove"
+                type="button"
+                aria-label="移除资源"
+                @click.stop="removeSelectedUploadFile(file)"
+              >
+                ×
+              </button>
+            </div>
+          </template>
           <template #tip>
             <div class="upload-wall__tip">点击卡片选择资源，上传后会展示在当前分类的资源墙里。</div>
           </template>
@@ -367,6 +418,7 @@ const expandedDetailMap = reactive<Record<string, any>>({});
 const expandedLoadingMap = reactive<Record<string, boolean>>({});
 const expandedItemDetailMap = reactive<Record<string, any>>({});
 const itemLoadingMap = reactive<Record<string, boolean>>({});
+const playingResourceId = ref('');
 
 const categoryForm = reactive({
   name: '',
@@ -404,6 +456,7 @@ const shareForm = reactive({
 const uploadTargetCollectionId = ref('');
 const uploadTargetCategoryId = ref('');
 const uploadFileList = ref<UploadUserFile[]>([]);
+const uploadPreviewMap = reactive<Record<string, { type: 'image' | 'video' | 'file'; url: string; posterUrl: string }>>({});
 const categoryItemParentName = ref('');
 const draggingCategoryId = ref('');
 const draggingResourceId = ref('');
@@ -650,6 +703,14 @@ function shouldShowDescriptionTooltip(description?: string) {
   return formatDescription(description).length > 24;
 }
 
+function playResourceVideo(resourceId: string) {
+  playingResourceId.value = resourceId;
+}
+
+function stopResourceVideo() {
+  playingResourceId.value = '';
+}
+
 function handleResourceDragStart(categoryId: string, resourceId: string) {
   draggingCategoryId.value = categoryId;
   draggingResourceId.value = resourceId;
@@ -766,14 +827,105 @@ function openUploadDialog(collectionId: string, categoryId: string) {
 
 function handleFileChange(file: UploadFile, fileList: UploadFiles) {
   uploadFileList.value = fileList;
+  prepareUploadPreview(file);
 }
 
 function handleFileRemove(file: UploadFile, fileList: UploadFiles) {
   uploadFileList.value = fileList;
+  removeUploadPreview(file.uid);
 }
 
 function resetUploadDialog() {
+  Object.keys(uploadPreviewMap).forEach((uid) => removeUploadPreview(Number(uid)));
   uploadFileList.value = [];
+}
+
+function getUploadPreview(file: UploadUserFile) {
+  return uploadPreviewMap[String(file.uid)];
+}
+
+function getFileExt(fileName: string) {
+  const ext = fileName.split('.').pop() || 'FILE';
+  return ext.slice(0, 5).toUpperCase();
+}
+
+function removeSelectedUploadFile(file: UploadUserFile) {
+  uploadFileList.value = uploadFileList.value.filter((item) => item.uid !== file.uid);
+  removeUploadPreview(file.uid);
+}
+
+function prepareUploadPreview(file: UploadFile) {
+  if (!file.raw) return;
+  removeUploadPreview(file.uid);
+  const url = URL.createObjectURL(file.raw);
+  const fileType = file.raw.type || '';
+  if (fileType.startsWith('image/')) {
+    uploadPreviewMap[String(file.uid)] = { type: 'image', url, posterUrl: '' };
+    return;
+  }
+  if (fileType.startsWith('video/')) {
+    uploadPreviewMap[String(file.uid)] = { type: 'video', url, posterUrl: '' };
+    captureUploadVideoPoster(file.uid, url);
+    return;
+  }
+  uploadPreviewMap[String(file.uid)] = { type: 'file', url, posterUrl: '' };
+}
+
+function removeUploadPreview(uid?: number) {
+  if (uid === undefined) return;
+  const key = String(uid);
+  const preview = uploadPreviewMap[key];
+  if (!preview) return;
+  if (preview.url) URL.revokeObjectURL(preview.url);
+  if (preview.posterUrl) URL.revokeObjectURL(preview.posterUrl);
+  delete uploadPreviewMap[key];
+}
+
+function captureUploadVideoPoster(uid: number, url: string) {
+  const video = document.createElement('video');
+  video.preload = 'metadata';
+  video.muted = true;
+  video.playsInline = true;
+  video.src = url;
+
+  const cleanup = () => {
+    video.removeAttribute('src');
+    video.load();
+  };
+
+  video.onloadedmetadata = () => {
+    const seekTime = Math.min(0.1, Math.max(video.duration || 0, 0) / 2);
+    video.currentTime = Number.isFinite(seekTime) ? seekTime : 0;
+  };
+
+  video.onseeked = () => {
+    const preview = uploadPreviewMap[String(uid)];
+    if (!preview || preview.url !== url) {
+      cleanup();
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 480;
+    canvas.height = video.videoHeight || 270;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      cleanup();
+      return;
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      const currentPreview = uploadPreviewMap[String(uid)];
+      if (!blob || !currentPreview || currentPreview.url !== url) {
+        cleanup();
+        return;
+      }
+      if (currentPreview.posterUrl) URL.revokeObjectURL(currentPreview.posterUrl);
+      currentPreview.posterUrl = URL.createObjectURL(blob);
+      cleanup();
+    }, 'image/jpeg', 0.85);
+  };
+
+  video.onerror = cleanup;
 }
 
 async function submitUpload() {
@@ -939,7 +1091,7 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 
 .resource-sort-badge {
   position: absolute;
-  top: 7px;
+  bottom: 7px;
   left: 7px;
   z-index: 2;
   display: inline-flex;
@@ -992,16 +1144,85 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 }
 
 .resource-preview :deep(.el-image),
+.resource-video-cover,
 .resource-preview video {
   display: block;
   width: 100%;
   height: 124px;
-  cursor: zoom-in;
 }
 
 .resource-preview :deep(.el-image__inner),
+.resource-video-cover img,
 .resource-preview video {
   object-fit: cover;
+}
+
+.resource-preview :deep(.el-image) {
+  cursor: zoom-in;
+}
+
+.resource-video-cover {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
+  cursor: pointer;
+}
+
+.resource-video-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.resource-video-cover::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(180deg, rgba(8, 16, 28, 0.04) 0%, rgba(8, 16, 28, 0.22) 100%);
+  pointer-events: none;
+}
+
+.resource-video-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  color: #486487;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  word-break: break-word;
+}
+
+.resource-video-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(17, 31, 54, 0.2);
+  transform: translate(-50%, -50%);
+}
+
+.resource-video-play::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 12px solid #2f6fed;
+  content: '';
+  transform: translate(-36%, -50%);
 }
 
 .resource-info {
@@ -1125,6 +1346,101 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 .upload-wall :deep(.el-upload--picture-card) {
   border: 1px dashed rgba(47, 107, 255, 0.42);
   background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+}
+
+.upload-preview-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
+}
+
+.upload-preview-card__media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-preview-card__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #526b91;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.upload-preview-card__placeholder::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(180deg, rgba(8, 16, 28, 0.02) 0%, rgba(8, 16, 28, 0.16) 100%);
+}
+
+.upload-preview-card__play {
+  position: relative;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 18px rgba(17, 31, 54, 0.18);
+}
+
+.upload-preview-card__play::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-left: 13px solid #2f6fed;
+  content: '';
+  transform: translate(-35%, -50%);
+}
+
+.upload-preview-card__name {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  z-index: 2;
+  overflow: hidden;
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: rgba(17, 31, 54, 0.58);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-preview-card__remove {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(17, 31, 54, 0.58);
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .upload-wall__tip {
