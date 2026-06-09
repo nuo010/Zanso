@@ -79,10 +79,10 @@
                                 <video
                                   v-else
                                   :src="resource.fileUrl"
+                                  :poster="resource.posterUrl"
                                   controls
                                   playsinline
-                                  preload="auto"
-                                  @loadedmetadata="showVideoFirstFrame"
+                                  preload="metadata"
                                 ></video>
                               </div>
                               <div class="resource-info">
@@ -618,7 +618,14 @@ function normalizeResourceList(resourceList: any[]) {
   return resourceList.map((item) => ({
     ...item,
     fileUrl: resolveResourceURL(item.url || item.storagePath || ''),
+    posterUrl: resolveVideoPosterURL(item),
   }));
+}
+
+function resolveVideoPosterURL(item: any) {
+  if (item.resourceType !== 'video') return '';
+  const posterPath = item.posterUrl || item.coverUrl || item.thumbnailUrl || item.previewUrl || '';
+  return posterPath ? resolveResourceURL(posterPath) : '';
 }
 
 function formatFileSize(size?: number) {
@@ -641,12 +648,6 @@ function formatDescription(description?: string) {
 
 function shouldShowDescriptionTooltip(description?: string) {
   return formatDescription(description).length > 24;
-}
-
-function showVideoFirstFrame(event: Event) {
-  const video = event.target as HTMLVideoElement;
-  if (!video.duration || video.currentTime > 0) return;
-  video.currentTime = Math.min(0.1, video.duration / 2);
 }
 
 function handleResourceDragStart(categoryId: string, resourceId: string) {

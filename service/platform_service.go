@@ -1,10 +1,13 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -869,7 +872,7 @@ func UploadCategoryResource(c *gin.Context) {
 		storedFileName,
 	)
 	storagePath := strings.ReplaceAll(relativePath, "\\", "/")
-	publicURL, err := saveUploadedResource(c, file, storagePath)
+	publicURL, posterURL, err := saveUploadedResourceWithPoster(c, file, storagePath, resourceType)
 	if err != nil {
 		result.ErrSetMsg(c, "保存资源文件失败")
 		return
@@ -885,6 +888,7 @@ func UploadCategoryResource(c *gin.Context) {
 		MimeType:     file.Header.Get("Content-Type"),
 		StoragePath:  storagePath,
 		URL:          publicURL,
+		PosterURL:    posterURL,
 		Status:       model.ResourceStatusActive,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -900,6 +904,7 @@ func UploadCategoryResource(c *gin.Context) {
 		FileSize:       file.Size,
 		MimeType:       file.Header.Get("Content-Type"),
 		URL:            publicURL,
+		PosterURL:      posterURL,
 		Sort:           sortValue,
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -963,7 +968,7 @@ func DeleteResource(c *gin.Context) {
 		return
 	}
 
-	removeResourceFiles(c, []string{resource.StoragePath})
+	removeResourceFiles(c, []string{resource.StoragePath, resource.PosterURL})
 
 	result.OkSetData(c, gin.H{"id": resourceID})
 }
@@ -1489,6 +1494,39 @@ func buildPublicAssetURL(c *gin.Context, relativePath string) string {
 	return fmt.Sprintf("%s/uploads/%s", requestBaseURL(c), cleanPath)
 }
 
+func saveUploadedResourceWithPoster(c *gin.Context, file *multipart.FileHeader, storagePath string, resourceType string) (string, string, error) {
+	if resourceType != "video" {
+		publicURL, err := saveUploadedResource(c, file, storagePath)
+		return publicURL, "", err
+	}
+
+	tempVideoPath, err := saveUploadedFileToTemp(file, filepath.Ext(storagePath))
+	if err != nil {
+		return "", "", err
+	}
+	defer removeTempFile(tempVideoPath)
+
+	publicURL, err := saveResourceFile(c, tempVideoPath, storagePath, file.Header.Get("Content-Type"))
+	if err != nil {
+		return "", "", err
+	}
+
+	posterTempPath, err := generateVideoPoster(tempVideoPath)
+	if err != nil {
+		util.Log().Error("生成视频封面失败: %v", err)
+		return publicURL, "", nil
+	}
+	defer removeTempFile(posterTempPath)
+
+	posterStoragePath := videoPosterStoragePath(storagePath)
+	posterURL, err := saveResourceFile(c, posterTempPath, posterStoragePath, "image/jpeg")
+	if err != nil {
+		util.Log().Error("保存视频封面失败: %v", err)
+		return publicURL, "", nil
+	}
+	return publicURL, posterURL, nil
+}
+
 func saveUploadedResource(c *gin.Context, file *multipart.FileHeader, storagePath string) (string, error) {
 	if db.UseMinioStorage() {
 		src, err := file.Open()
@@ -1513,6 +1551,113 @@ func saveUploadedResource(c *gin.Context, file *multipart.FileHeader, storagePat
 		return "", err
 	}
 	return buildPublicAssetURL(c, storagePath), nil
+}
+
+func saveUploadedFileToTemp(file *multipart.FileHeader, ext string) (string, error) {
+	if strings.TrimSpace(ext) == "" {
+		ext = ".video"
+	}
+	tempDir := filepath.Join(os.TempDir(), "zanso", "uploads")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", err
+	}
+	tempPath := filepath.Join(tempDir, randomResourceFileName(16)+ext)
+	src, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+
+	dst, err := os.Create(tempPath)
+	if err != nil {
+		return "", err
+	}
+	defer dst.Close()
+	if _, err = io.Copy(dst, src); err != nil {
+		_ = os.Remove(tempPath)
+		return "", err
+	}
+	return tempPath, nil
+}
+
+func saveResourceFile(c *gin.Context, sourcePath string, storagePath string, contentType string) (string, error) {
+	if db.UseMinioStorage() {
+		file, err := os.Open(sourcePath)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+
+		info, err := file.Stat()
+		if err != nil {
+			return "", err
+		}
+		objectName, err := db.UploadMinioObject(c.Request.Context(), storagePath, file, info.Size(), contentType)
+		if err != nil {
+			return "", err
+		}
+		return db.BuildMinioStoragePath(objectName), nil
+	}
+
+	localDir := getUploadLocalDir()
+	fullPath := filepath.Join(localDir, filepath.FromSlash(storagePath))
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return "", err
+	}
+	src, err := os.Open(sourcePath)
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+	dst, err := os.Create(fullPath)
+	if err != nil {
+		return "", err
+	}
+	defer dst.Close()
+	if _, err = io.Copy(dst, src); err != nil {
+		return "", err
+	}
+	return buildPublicAssetURL(c, storagePath), nil
+}
+
+func generateVideoPoster(videoPath string) (string, error) {
+	tempDir := filepath.Join(os.TempDir(), "zanso", "posters")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", err
+	}
+	posterPath := filepath.Join(tempDir, randomResourceFileName(16)+".jpg")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx,
+		"ffmpeg",
+		"-y",
+		"-ss", "00:00:01",
+		"-i", videoPath,
+		"-frames:v", "1",
+		"-q:v", "2",
+		posterPath,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		_ = os.Remove(posterPath)
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("ffmpeg 生成封面超时")
+		}
+		return "", fmt.Errorf("ffmpeg 生成封面失败: %w, output: %s", err, string(output))
+	}
+	return posterPath, nil
+}
+
+func videoPosterStoragePath(videoStoragePath string) string {
+	ext := filepath.Ext(videoStoragePath)
+	basePath := strings.TrimSuffix(videoStoragePath, ext)
+	return strings.ReplaceAll(basePath+"_poster.jpg", "\\", "/")
+}
+
+func removeTempFile(path string) {
+	if strings.TrimSpace(path) != "" {
+		_ = os.Remove(path)
+	}
 }
 
 func randomResourceFileName(length int) string {
@@ -1641,8 +1786,19 @@ func collectCategoryResourcePaths(categoryID string, categoryItemID string) ([]s
 			"JOIN tbl_collection_resource_relation rel ON rel.resource_id = tbl_resource.id",
 		).Where("rel.collection_id = ?", categoryID)
 	}
-	var paths []string
-	return paths, query.Pluck("tbl_resource.storage_path", &paths).Error
+	type resourcePathRow struct {
+		StoragePath string
+		PosterURL   string
+	}
+	var rows []resourcePathRow
+	if err := query.Select("tbl_resource.storage_path, tbl_resource.poster_url").Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	paths := make([]string, 0, len(rows)*2)
+	for _, row := range rows {
+		paths = append(paths, row.StoragePath, row.PosterURL)
+	}
+	return paths, nil
 }
 
 func removeResourceFiles(c *gin.Context, paths []string) {
@@ -1663,7 +1819,7 @@ func removeResourceFiles(c *gin.Context, paths []string) {
 
 func removeLocalFiles(paths []string) {
 	for _, path := range paths {
-		cleanPath := strings.TrimSpace(path)
+		cleanPath := cleanLocalUploadPath(path)
 		if cleanPath == "" {
 			continue
 		}
@@ -1672,6 +1828,17 @@ func removeLocalFiles(paths []string) {
 			_ = os.Remove(fullPath)
 		}
 	}
+}
+
+func cleanLocalUploadPath(path string) string {
+	cleanPath := strings.TrimSpace(path)
+	if cleanPath == "" {
+		return ""
+	}
+	if index := strings.Index(cleanPath, "/uploads/"); index >= 0 {
+		cleanPath = cleanPath[index+len("/uploads/"):]
+	}
+	return strings.TrimLeft(strings.ReplaceAll(cleanPath, "\\", "/"), "/")
 }
 
 func parsePageParams(c *gin.Context) (int, int) {

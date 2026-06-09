@@ -35,10 +35,10 @@
             <video
               v-else
               :src="item.fileUrl"
+              :poster="item.posterUrl"
               controls
               playsinline
-              preload="auto"
-              @loadedmetadata="showVideoFirstFrame"
+              preload="metadata"
             ></video>
             <div class="media-info">
               <span>{{ item.fileName }}</span>
@@ -167,6 +167,7 @@ function normalizeResourceList(resourceList: any[]) {
   return resourceList.map((item) => ({
     ...item,
     fileUrl: resolveResourceURL(item.url || item.storagePath || ''),
+    posterUrl: resolveVideoPosterURL(item),
   }));
 }
 
@@ -182,10 +183,10 @@ function closePreview() {
   previewTitle.value = '';
 }
 
-function showVideoFirstFrame(event: Event) {
-  const video = event.target as HTMLVideoElement;
-  if (!video.duration || video.currentTime > 0) return;
-  video.currentTime = Math.min(0.1, video.duration / 2);
+function resolveVideoPosterURL(item: any) {
+  if (item.resourceType !== 'video') return '';
+  const posterPath = item.posterUrl || item.coverUrl || item.thumbnailUrl || item.previewUrl || '';
+  return posterPath ? resolveResourceURL(posterPath) : '';
 }
 
 function preventGestureZoom(event: Event) {
