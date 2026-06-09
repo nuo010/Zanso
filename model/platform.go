@@ -158,7 +158,6 @@ type ShareViewLog struct {
 	CategoryItemID string    `json:"categoryId" gorm:"column:category_id;size:32;index"`
 	TargetType     string    `json:"targetType" gorm:"size:32;index;not null"`
 	UserID         string    `json:"userId" gorm:"size:32;index;not null"`
-	TrafficSize    int64     `json:"trafficSize" gorm:"not null;default:0"`
 	ViewerIP       string    `json:"viewerIp" gorm:"size:64"`
 	UserAgent      string    `json:"userAgent" gorm:"size:512"`
 	Referer        string    `json:"referer" gorm:"size:512"`
@@ -167,22 +166,6 @@ type ShareViewLog struct {
 
 func (ShareViewLog) TableName() string {
 	return "tbl_share_view_log"
-}
-
-type ResourceAccessLog struct {
-	ID          string    `json:"id" gorm:"primarykey;size:32"`
-	ResourceID  string    `json:"resourceId" gorm:"size:32;index;not null"`
-	ShareLinkID string    `json:"shareLinkId" gorm:"size:32;index"`
-	UserID      string    `json:"userId" gorm:"size:32;index;not null"`
-	TrafficSize int64     `json:"trafficSize" gorm:"not null;default:0"`
-	ViewerIP    string    `json:"viewerIp" gorm:"size:64"`
-	UserAgent   string    `json:"userAgent" gorm:"size:512"`
-	Referer     string    `json:"referer" gorm:"size:512"`
-	CreatedAt   time.Time `json:"createdAt"`
-}
-
-func (ResourceAccessLog) TableName() string {
-	return "tbl_resource_access_log"
 }
 
 type Announcement struct {
@@ -291,10 +274,9 @@ type PageResult struct {
 }
 
 type DashboardStats struct {
-	CollectionCount     int64 `json:"collectionCount"`
-	ResourceCount       int64 `json:"resourceCount"`
-	FileSizeTotal       int64 `json:"fileSizeTotal"`
-	ExternalTrafficSize int64 `json:"externalTrafficSize"`
+	CollectionCount int64 `json:"collectionCount"`
+	ResourceCount   int64 `json:"resourceCount"`
+	FileSizeTotal   int64 `json:"fileSizeTotal"`
 }
 
 type UserWithRoles struct {
@@ -338,7 +320,6 @@ type ShareView struct {
 	User         User                       `json:"user"`
 	ResourceList []CategoryResourceRelation `json:"resourceList"`
 	ShareURL     string                     `json:"shareUrl"`
-	ShareCode    string                     `json:"shareCode"`
 }
 
 type UserAuthResponse struct {

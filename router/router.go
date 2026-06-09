@@ -24,7 +24,6 @@ func NewRouter() *gin.Engine {
 	{
 		platform.POST("/users", service.CreateUser)
 		platform.POST("/auth/login", service.LoginUser)
-		platform.GET("/public/resources/:id", service.GetPublicResource)
 	}
 
 	platformAuth := platform.Group("")
