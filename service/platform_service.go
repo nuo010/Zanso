@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -1448,7 +1449,12 @@ func serveLocalResource(c *gin.Context, resource model.Resource) error {
 	if _, err := os.Stat(fullPath); err != nil {
 		return err
 	}
-	c.File(fullPath)
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	http.ServeContent(c.Writer, c.Request, resource.FileName, resource.UpdatedAt, file)
 	return nil
 }
 
@@ -1457,15 +1463,95 @@ func serveMinioResource(c *gin.Context, resource model.Resource) error {
 		return fmt.Errorf("MinIO 未初始化")
 	}
 	objectName := db.TrimMinioBucketPrefix(resource.StoragePath)
-	object, err := db.MinioClient.GetObject(c.Request.Context(), db.MinioBucket, objectName, minio.GetObjectOptions{})
+	fileSize := resource.FileSize
+	start, end, partial, err := parseSingleHTTPRange(c.GetHeader("Range"), fileSize)
+	if err != nil {
+		c.Header("Content-Range", fmt.Sprintf("bytes */%d", fileSize))
+		c.Status(http.StatusRequestedRangeNotSatisfiable)
+		return nil
+	}
+
+	options := minio.GetObjectOptions{}
+	if partial {
+		if err = options.SetRange(start, end); err != nil {
+			return err
+		}
+	}
+	object, err := db.MinioClient.GetObject(c.Request.Context(), db.MinioBucket, objectName, options)
 	if err != nil {
 		return err
 	}
 	defer object.Close()
+
+	contentLength := fileSize
+	if partial {
+		contentLength = end - start + 1
+		c.Header("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, fileSize))
+		c.Header("Content-Length", strconv.FormatInt(contentLength, 10))
+		c.Status(http.StatusPartialContent)
+	} else if contentLength > 0 {
+		c.Header("Content-Length", strconv.FormatInt(contentLength, 10))
+	}
 	if _, err = io.Copy(c.Writer, object); err != nil && !isClientDisconnected(c.Request.Context()) {
 		return err
 	}
 	return nil
+}
+
+func parseSingleHTTPRange(rangeHeader string, fileSize int64) (int64, int64, bool, error) {
+	rangeHeader = strings.TrimSpace(rangeHeader)
+	if rangeHeader == "" {
+		return 0, 0, false, nil
+	}
+	if fileSize <= 0 {
+		return 0, 0, false, fmt.Errorf("文件大小无效")
+	}
+	if !strings.HasPrefix(rangeHeader, "bytes=") || strings.Contains(rangeHeader, ",") {
+		return 0, 0, false, fmt.Errorf("Range 格式不支持")
+	}
+
+	rangeValue := strings.TrimSpace(strings.TrimPrefix(rangeHeader, "bytes="))
+	parts := strings.SplitN(rangeValue, "-", 2)
+	if len(parts) != 2 {
+		return 0, 0, false, fmt.Errorf("Range 格式错误")
+	}
+
+	startText := strings.TrimSpace(parts[0])
+	endText := strings.TrimSpace(parts[1])
+	var start int64
+	var end int64
+	var err error
+
+	if startText == "" {
+		suffixLength, parseErr := strconv.ParseInt(endText, 10, 64)
+		if parseErr != nil || suffixLength <= 0 {
+			return 0, 0, false, fmt.Errorf("Range 后缀错误")
+		}
+		if suffixLength > fileSize {
+			suffixLength = fileSize
+		}
+		start = fileSize - suffixLength
+		end = fileSize - 1
+		return start, end, true, nil
+	}
+
+	start, err = strconv.ParseInt(startText, 10, 64)
+	if err != nil || start < 0 || start >= fileSize {
+		return 0, 0, false, fmt.Errorf("Range 起始位置错误")
+	}
+	if endText == "" {
+		end = fileSize - 1
+	} else {
+		end, err = strconv.ParseInt(endText, 10, 64)
+		if err != nil || end < start {
+			return 0, 0, false, fmt.Errorf("Range 结束位置错误")
+		}
+		if end >= fileSize {
+			end = fileSize - 1
+		}
+	}
+
+	return start, end, true, nil
 }
 
 func recordResourceAccess(c *gin.Context, resource model.Resource, shareLink model.ShareLink) {

@@ -35,10 +35,11 @@
             <video
               v-else
               :src="item.fileUrl"
+              :poster="item.posterUrl"
               controls
               playsinline
-              preload="auto"
-              @loadedmetadata="showVideoFirstFrame"
+              webkit-playsinline
+              preload="metadata"
             ></video>
             <div class="media-info">
               <span>{{ item.fileName }}</span>
@@ -141,6 +142,7 @@ onMounted(async () => {
       ...res.data,
       resourceList: normalizeResourceList(res.data?.resourceList || []),
     };
+    generateVideoPosters(detail.value.resourceList);
     errorMessage.value = '';
   } catch (error: any) {
     const message = error?.message || '分享链接不存在';
@@ -167,7 +169,187 @@ function normalizeResourceList(resourceList: any[]) {
   return resourceList.map((item) => ({
     ...item,
     fileUrl: resolveResourceURL(item.url || item.storagePath || ''),
+    posterUrl: '',
   }));
+}
+
+function generateVideoPosters(resourceList: any[]) {
+  resourceList
+    .filter((item) => item.resourceType === 'video' && item.fileUrl)
+    .forEach((item) => {
+      captureVideoPoster(item.fileUrl)
+        .then((posterUrl) => {
+          item.posterUrl = posterUrl;
+        })
+        .catch(() => {
+          item.posterUrl = '';
+        });
+    });
+}
+
+function captureVideoPoster(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    let settled = false;
+    let captureTimes: number[] = [];
+    let captureIndex = 0;
+    let fallbackPoster = '';
+    const timeout = window.setTimeout(() => {
+      fail();
+    }, 12000);
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      video.remove();
+    };
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('capture video poster failed'));
+    };
+    const done = (posterUrl: string) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(posterUrl);
+    };
+
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.preload = 'metadata';
+    video.crossOrigin = 'anonymous';
+    video.style.position = 'fixed';
+    video.style.left = '-9999px';
+    video.style.top = '0';
+    video.style.width = '1px';
+    video.style.height = '1px';
+    video.style.opacity = '0';
+    video.style.pointerEvents = 'none';
+    video.src = url;
+    document.body.appendChild(video);
+
+    const prepareCapture = () => {
+      if (!video.videoWidth || !video.videoHeight) {
+        return;
+      }
+      if (captureTimes.length > 0) {
+        return;
+      }
+      captureTimes = buildPosterCaptureTimes(video.duration);
+      seekNextPosterFrame(video, captureTimes, captureIndex, fail);
+    };
+
+    video.addEventListener(
+      'seeked',
+      () => {
+        const posterFrame = drawVideoPoster(video);
+        if (!posterFrame) {
+          fail();
+          return;
+        }
+        if (!fallbackPoster) {
+          fallbackPoster = posterFrame.posterUrl;
+        }
+        if (!posterFrame.isDarkFrame) {
+          done(posterFrame.posterUrl);
+          return;
+        }
+        captureIndex += 1;
+        if (captureIndex < captureTimes.length) {
+          seekNextPosterFrame(video, captureTimes, captureIndex, fail);
+          return;
+        }
+        if (fallbackPoster) {
+          done(fallbackPoster);
+          return;
+        }
+        fail();
+      }
+    );
+    video.addEventListener('loadedmetadata', prepareCapture);
+    video.addEventListener('loadeddata', prepareCapture);
+    video.addEventListener('canplay', prepareCapture);
+    video.addEventListener('error', fail, { once: true });
+    video.load();
+  });
+}
+
+function buildPosterCaptureTimes(duration: number) {
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 3;
+  const rawTimes = [
+    0.5,
+    1,
+    2,
+    safeDuration * 0.15,
+    safeDuration * 0.25,
+    safeDuration * 0.5,
+    Math.max(safeDuration - 0.5, 0),
+  ];
+  const maxTime = Math.max(safeDuration - 0.05, 0);
+  return [...new Set(rawTimes.map((time) => Math.min(Math.max(time, 0), maxTime).toFixed(2)))]
+    .map((time) => Number(time))
+    .filter((time) => Number.isFinite(time) && time >= 0);
+}
+
+function seekNextPosterFrame(video: HTMLVideoElement, captureTimes: number[], index: number, reject: () => void) {
+  const targetTime = captureTimes[index];
+  if (!Number.isFinite(targetTime)) {
+    reject();
+    return;
+  }
+  try {
+    video.currentTime = targetTime;
+  } catch {
+    reject();
+  }
+}
+
+function drawVideoPoster(video: HTMLVideoElement): { posterUrl: string; isDarkFrame: boolean } | null {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return null;
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const isDarkFrame = isCanvasMostlyDark(context, canvas.width, canvas.height);
+    const posterUrl = canvas.toDataURL('image/jpeg', 0.82);
+    return { posterUrl, isDarkFrame };
+  } catch {
+    return null;
+  }
+}
+
+function isCanvasMostlyDark(context: CanvasRenderingContext2D, width: number, height: number) {
+  const imageData = context.getImageData(0, 0, width, height).data;
+  const stepX = Math.max(Math.floor(width / 48), 1);
+  const stepY = Math.max(Math.floor(height / 48), 1);
+  let brightPixels = 0;
+  let totalBrightness = 0;
+  let pixelCount = 0;
+
+  for (let y = 0; y < height; y += stepY) {
+    for (let x = 0; x < width; x += stepX) {
+      const index = (y * width + x) * 4;
+      const brightness = imageData[index] * 0.299 + imageData[index + 1] * 0.587 + imageData[index + 2] * 0.114;
+      totalBrightness += brightness;
+      pixelCount += 1;
+      if (brightness > 35) {
+        brightPixels += 1;
+      }
+    }
+  }
+
+  const averageBrightness = totalBrightness / pixelCount;
+  const brightRatio = brightPixels / pixelCount;
+  return averageBrightness < 28 || brightRatio < 0.08;
 }
 
 function openPreview(url: string, title: string) {
@@ -180,12 +362,6 @@ function closePreview() {
   previewVisible.value = false;
   previewImage.value = '';
   previewTitle.value = '';
-}
-
-function showVideoFirstFrame(event: Event) {
-  const video = event.target as HTMLVideoElement;
-  if (!video.duration || video.currentTime > 0) return;
-  video.currentTime = Math.min(0.1, video.duration / 2);
 }
 
 function preventGestureZoom(event: Event) {
