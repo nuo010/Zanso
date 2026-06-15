@@ -315,6 +315,16 @@
           />
         </el-form-item>
       </el-form>
+      <div v-if="generatedShare.shareUrl" class="share-result">
+        <div class="share-result__qr">
+          <qrcode-vue :value="generatedShare.shareUrl" :size="168" level="M" render-as="svg" />
+        </div>
+        <div class="share-result__content">
+          <strong>{{ generatedShare.title || shareForm.title || '分享链接' }}</strong>
+          <a :href="generatedShare.shareUrl" target="_blank" rel="noopener noreferrer">{{ generatedShare.shareUrl }}</a>
+          <el-button type="primary" plain @click="copyShareUrl">一键复制分享链接</el-button>
+        </div>
+      </div>
       <template #footer>
         <el-button @click="shareDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submittingShare" @click="handleSubmitShare">生成分享链接</el-button>
@@ -383,6 +393,7 @@ import { reactive, ref } from 'vue';
 import type { UploadFile, UploadFiles, UploadUserFile } from 'element-plus';
 import { ElMessageBox } from 'element-plus';
 import { Delete, Plus } from '@element-plus/icons-vue';
+import QrcodeVue from 'qrcode.vue';
 import {
   createCategory,
   createCategoryItem,
@@ -451,6 +462,11 @@ const shareForm = reactive({
   title: '',
   description: '',
   expiresAt: '',
+});
+
+const generatedShare = reactive({
+  title: '',
+  shareUrl: '',
 });
 
 const uploadTargetCollectionId = ref('');
@@ -528,6 +544,8 @@ function openShareDialog(
   shareForm.title = title || '';
   shareForm.description = description || '';
   shareForm.expiresAt = '';
+  generatedShare.title = '';
+  generatedShare.shareUrl = '';
   shareDialogVisible.value = true;
 }
 
@@ -637,11 +655,40 @@ async function handleSubmitShare() {
       description: shareForm.description.trim(),
       expiresAt: shareForm.expiresAt || undefined,
     });
-    toast(`分享链接已生成：${res.data.shareUrl}`, 'success');
-    shareDialogVisible.value = false;
+    generatedShare.title = res.data?.shareLink?.title || shareForm.title.trim();
+    generatedShare.shareUrl = res.data?.shareUrl || '';
+    toast('分享链接已生成', 'success');
   } finally {
     submittingShare.value = false;
   }
+}
+
+async function copyShareUrl() {
+  const shareUrl = generatedShare.shareUrl;
+  if (!shareUrl) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(shareUrl);
+    } else {
+      copyTextWithTextarea(shareUrl);
+    }
+    toast('分享链接已复制', 'success');
+  } catch (error) {
+    copyTextWithTextarea(shareUrl);
+    toast('分享链接已复制', 'success');
+  }
+}
+
+function copyTextWithTextarea(text: string) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'readonly');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
 }
 
 async function loadCollectionDetail(id: string, page = 1) {
@@ -1317,6 +1364,52 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   word-break: break-word;
 }
 
+.share-result {
+  display: grid;
+  grid-template-columns: 184px 1fr;
+  gap: 16px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid rgba(47, 107, 255, 0.16);
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.share-result__qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 1px solid #e1e8f5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.share-result__content {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.share-result__content strong {
+  overflow: hidden;
+  color: #17315f;
+  font-size: 15px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-result__content a {
+  overflow: hidden;
+  color: #2f6fed;
+  font-size: 13px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .table-pagination,
 .inner-pagination {
   display: flex;
@@ -1449,5 +1542,11 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   color: #6d82a7;
   font-size: 13px;
   text-align: center;
+}
+
+@media (max-width: 560px) {
+  .share-result {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
