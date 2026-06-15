@@ -1395,6 +1395,9 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 		result.ErrSetMsg(c, "分享码不能为空")
 		return model.ShareView{}, false
 	}
+	page, pageSize := parsePageParams(c)
+	filterCategoryID := strings.TrimSpace(c.Query("categoryId"))
+	shouldRecordShareView := page == 1 && filterCategoryID == ""
 
 	var shareLink model.ShareLink
 	if err := db.DB.Where("share_code = ? AND status = ?", shareCode, model.ShareStatusActive).Take(&shareLink).Error; err != nil {
@@ -1411,6 +1414,7 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 	var item *model.CategoryItem
 	var itemList []model.CategoryItem
 	var resourceList []model.CategoryResourceRelation
+	var total int64
 	db.DB.Where("id = ?", shareLink.CategoryID).Take(&category)
 	db.DB.Where("id = ?", shareLink.UserID).Take(&user)
 	if !category.Visible {
@@ -1426,28 +1430,42 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 				return model.ShareView{}, false
 			}
 		}
-		db.DB.Where("category_id = ?", shareLink.CategoryItemID).Order("sort asc, created_at asc").Find(&resourceList)
+		resourceQuery := db.DB.Model(&model.CategoryResourceRelation{}).Where("category_id = ?", shareLink.CategoryItemID)
+		resourceQuery.Count(&total)
+		resourceQuery.Order("sort asc, created_at asc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&resourceList)
 	} else {
 		db.DB.Where("collection_id = ? AND visible = ?", shareLink.CategoryID, true).Order("created_at asc").Find(&itemList)
-		db.DB.Where("collection_id = ?", shareLink.CategoryID).Order("sort asc, created_at asc").Find(&resourceList)
+		resourceQuery := db.DB.Model(&model.CategoryResourceRelation{}).Where("collection_id = ?", shareLink.CategoryID)
+		if filterCategoryID != "" && filterCategoryID != "all" {
+			var filterItem model.CategoryItem
+			if err := db.DB.Where("id = ? AND collection_id = ? AND visible = ?", filterCategoryID, shareLink.CategoryID, true).Take(&filterItem).Error; err != nil {
+				result.ErrSetMsg(c, "分享分类不存在或当前不可查看")
+				return model.ShareView{}, false
+			}
+			resourceQuery = resourceQuery.Where("category_id = ?", filterCategoryID)
+		}
+		resourceQuery.Count(&total)
+		resourceQuery.Order("sort asc, created_at asc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&resourceList)
 	}
 
 	shareLink.Title = currentShareTitle(shareLink, category, item)
 	shareLink.Description = currentShareDescription(shareLink, category, item)
-	db.DB.Model(&model.ShareLink{}).Where("id = ?", shareLink.ID).UpdateColumn("view_count", gorm.Expr("view_count + 1"))
-	_ = db.DB.Create(&model.ShareViewLog{
-		ID:             util.GetUuid(),
-		ShareLinkID:    shareLink.ID,
-		CategoryID:     shareLink.CategoryID,
-		CategoryItemID: shareLink.CategoryItemID,
-		TargetType:     shareLink.TargetType,
-		UserID:         shareLink.UserID,
-		ViewerIP:       c.ClientIP(),
-		UserAgent:      c.GetHeader("User-Agent"),
-		Referer:        c.GetHeader("Referer"),
-		CreatedAt:      util.GetTime(),
-	}).Error
-	shareLink.ViewCount++
+	if shouldRecordShareView {
+		db.DB.Model(&model.ShareLink{}).Where("id = ?", shareLink.ID).UpdateColumn("view_count", gorm.Expr("view_count + 1"))
+		_ = db.DB.Create(&model.ShareViewLog{
+			ID:             util.GetUuid(),
+			ShareLinkID:    shareLink.ID,
+			CategoryID:     shareLink.CategoryID,
+			CategoryItemID: shareLink.CategoryItemID,
+			TargetType:     shareLink.TargetType,
+			UserID:         shareLink.UserID,
+			ViewerIP:       c.ClientIP(),
+			UserAgent:      c.GetHeader("User-Agent"),
+			Referer:        c.GetHeader("Referer"),
+			CreatedAt:      util.GetTime(),
+		}).Error
+		shareLink.ViewCount++
+	}
 
 	return model.ShareView{
 		ShareLink:    shareLink,
@@ -1456,6 +1474,10 @@ func loadShareView(c *gin.Context) (model.ShareView, bool) {
 		Categories:   itemList,
 		User:         user,
 		ResourceList: resourceList,
+		Total:        total,
+		Page:         page,
+		PageSize:     pageSize,
+		HasMore:      int64(page*pageSize) < total,
 		ShareURL:     buildShareURL(c, shareCode),
 	}, true
 }

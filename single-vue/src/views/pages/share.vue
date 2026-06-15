@@ -25,12 +25,17 @@
         <h2>资源展示</h2>
         <div class="media-grid">
           <article v-for="item in filteredResources" :key="item.id" class="media-card">
+            <div v-if="item.resourceType !== 'video' && !loadedImageMap[item.id]" class="media-skeleton"></div>
             <img
               v-if="item.resourceType !== 'video'"
+              :class="{ 'is-loaded': loadedImageMap[item.id] }"
               :src="item.fileUrl"
               :alt="item.fileName"
               loading="lazy"
+              decoding="async"
               @click="openPreview(item.fileUrl, item.fileName)"
+              @load="markImageLoaded(item.id)"
+              @error="markImageLoaded(item.id)"
             />
             <video
               v-else
@@ -46,7 +51,14 @@
             </div>
           </article>
         </div>
-        <el-empty v-if="filteredResources.length === 0" description="当前筛选条件下没有资源" />
+        <el-empty v-if="filteredResources.length === 0 && !resourceLoading" description="当前筛选条件下没有资源" />
+        <div v-if="resourceLoading" class="load-more-state">
+          <span class="load-more-spinner"></span>
+          <span>正在加载更多资源</span>
+        </div>
+        <div v-else-if="filteredResources.length && !hasMore" class="load-more-state load-more-state--done">
+          已经到底了
+        </div>
       </section>
 
       <section class="meta-inline">
@@ -65,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { getShareLinkDetail } from '@/api/user';
 import { resolveResourceURL } from '@/util/util';
@@ -79,7 +91,14 @@ const previewVisible = ref(false);
 const previewImage = ref('');
 const previewTitle = ref('');
 const originalViewportContent = ref('');
+const page = ref(1);
+const pageSize = 12;
+const total = ref(0);
+const hasMore = ref(false);
+const resourceLoading = ref(false);
+const loadedImageMap = reactive<Record<string, boolean>>({});
 let lastTouchEndAt = 0;
+let scrollTicking = false;
 
 const isCollectionShare = computed(() => detail.value?.shareLink?.targetType === 'collection');
 const selectedCategory = computed(() => {
@@ -118,10 +137,12 @@ const filterOptions = computed(() => {
 });
 
 const filteredResources = computed(() => {
-  const list = detail.value?.resourceList || [];
-  if (!isCollectionShare.value) return list;
-  if (selectedFilter.value === 'all') return list;
-  return list.filter((item: any) => item.categoryId === selectedFilter.value);
+  return detail.value?.resourceList || [];
+});
+
+watch(selectedFilter, () => {
+  if (!detail.value || !isCollectionShare.value) return;
+  loadShareDetail(1, true);
 });
 
 onMounted(async () => {
@@ -129,18 +150,44 @@ onMounted(async () => {
   document.addEventListener('gesturestart', preventGestureZoom, { passive: false });
   document.addEventListener('dblclick', preventGestureZoom, { passive: false });
   document.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
+  window.addEventListener('scroll', handleWindowScroll, { passive: true });
   const code = String(route.params.code || '');
   if (!code) {
     errorMessage.value = '分享链接不存在或分享码无效。';
     return;
   }
   loading.value = true;
+  await loadShareDetail(1, true);
+  loading.value = false;
+});
+
+onUnmounted(() => {
+  document.removeEventListener('gesturestart', preventGestureZoom);
+  document.removeEventListener('dblclick', preventGestureZoom);
+  document.removeEventListener('touchend', preventDoubleTapZoom);
+  window.removeEventListener('scroll', handleWindowScroll);
+  restoreViewport();
+});
+
+async function loadShareDetail(nextPage = 1, reset = false) {
+  if (resourceLoading.value) return;
+  const code = String(route.params.code || '');
+  if (!code) return;
+  resourceLoading.value = true;
   try {
-    const res = await getShareLinkDetail(code);
+    const res = await getShareLinkDetail(code, {
+      page: nextPage,
+      pageSize,
+      categoryId: isCollectionShare.value && selectedFilter.value !== 'all' ? selectedFilter.value : undefined,
+    });
+    const nextResourceList = normalizeResourceList(res.data?.resourceList || []);
     detail.value = {
       ...res.data,
-      resourceList: normalizeResourceList(res.data?.resourceList || []),
+      resourceList: reset ? nextResourceList : [...(detail.value?.resourceList || []), ...nextResourceList],
     };
+    page.value = res.data?.page || nextPage;
+    total.value = res.data?.total || detail.value.resourceList.length;
+    hasMore.value = Boolean(res.data?.hasMore);
     errorMessage.value = '';
   } catch (error: any) {
     const message = error?.message || '分享链接不存在';
@@ -152,16 +199,14 @@ onMounted(async () => {
       errorMessage.value = '这个分享链接不存在，可能已被删除。';
     }
   } finally {
-    loading.value = false;
+    resourceLoading.value = false;
   }
-});
+}
 
-onUnmounted(() => {
-  document.removeEventListener('gesturestart', preventGestureZoom);
-  document.removeEventListener('dblclick', preventGestureZoom);
-  document.removeEventListener('touchend', preventDoubleTapZoom);
-  restoreViewport();
-});
+async function loadMoreResources() {
+  if (!hasMore.value || resourceLoading.value || loading.value) return;
+  await loadShareDetail(page.value + 1, false);
+}
 
 function normalizeResourceList(resourceList: any[]) {
   return resourceList.map((item) => ({
@@ -175,6 +220,10 @@ function openPreview(url: string, title: string) {
   previewImage.value = url;
   previewTitle.value = title;
   previewVisible.value = true;
+}
+
+function markImageLoaded(id: string) {
+  loadedImageMap[id] = true;
 }
 
 function closePreview() {
@@ -217,6 +266,18 @@ function preventDoubleTapZoom(event: TouchEvent) {
     event.preventDefault();
   }
   lastTouchEndAt = now;
+}
+
+function handleWindowScroll() {
+  if (scrollTicking) return;
+  scrollTicking = true;
+  window.requestAnimationFrame(() => {
+    scrollTicking = false;
+    const distanceToBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+    if (distanceToBottom < 420) {
+      loadMoreResources();
+    }
+  });
 }
 </script>
 
@@ -338,6 +399,7 @@ function preventDoubleTapZoom(event: TouchEvent) {
 }
 
 .media-card {
+  position: relative;
   overflow: hidden;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.96);
@@ -349,15 +411,36 @@ function preventDoubleTapZoom(event: TouchEvent) {
 .media-card video {
   display: block;
   width: 100%;
+  min-height: 220px;
   background: linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
 }
 
 .media-card img {
   cursor: zoom-in;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.media-card img.is-loaded {
+  opacity: 1;
 }
 
 .media-card video {
   max-height: 72vh;
+}
+
+.media-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 220px;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.68) 46%, transparent 72%),
+    linear-gradient(180deg, #edf4ff 0%, #dfeafe 100%);
+  background-size: 220px 100%, 100% 100%;
+  animation: image-loading 1.1s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .media-info {
@@ -381,6 +464,29 @@ function preventDoubleTapZoom(event: TouchEvent) {
 
 .meta-inline span {
   white-space: nowrap;
+}
+
+.load-more-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  color: #7b8dad;
+  font-size: 13px;
+}
+
+.load-more-state--done {
+  color: #9aa8bf;
+}
+
+.load-more-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(47, 107, 255, 0.18);
+  border-top-color: #2f6bff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .image-preview {
@@ -415,6 +521,22 @@ function preventDoubleTapZoom(event: TouchEvent) {
   max-height: min(100vh - 80px, 90vh);
   border-radius: 18px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+}
+
+@keyframes image-loading {
+  0% {
+    background-position: -220px 0, 0 0;
+  }
+
+  100% {
+    background-position: calc(100% + 220px) 0, 0 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (min-width: 768px) {

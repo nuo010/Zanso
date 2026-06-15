@@ -325,6 +325,10 @@ type ShareView struct {
 	Categories   []CategoryItem             `json:"categories,omitempty"`
 	User         User                       `json:"user"`
 	ResourceList []CategoryResourceRelation `json:"resourceList"`
+	Total        int64                      `json:"total"`
+	Page         int                        `json:"page"`
+	PageSize     int                        `json:"pageSize"`
+	HasMore      bool                       `json:"hasMore"`
 	ShareURL     string                     `json:"shareUrl"`
 }
 

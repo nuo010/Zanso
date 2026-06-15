@@ -183,10 +183,11 @@ export function createShareLink(data: {
   });
 }
 
-export function getShareLinkDetail(code: string) {
+export function getShareLinkDetail(code: string, params?: { page?: number; pageSize?: number; categoryId?: string }) {
   return AxiosUtil({
     url: `/api/platform/share-links/${code}`,
     method: 'get',
+    params,
     skipAuth: true,
   });
 }
