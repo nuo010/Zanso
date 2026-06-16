@@ -24,7 +24,12 @@
       <section class="section">
         <h2>资源展示</h2>
         <div class="media-grid">
-          <article v-for="item in filteredResources" :key="item.id" class="media-card">
+          <article
+            v-for="(item, index) in filteredResources"
+            :key="item.id"
+            class="media-card"
+            :style="{ '--reveal-delay': `${Math.min(index % pageSize, 10) * 45}ms` }"
+          >
             <div v-if="item.resourceType !== 'video' && !loadedImageMap[item.id]" class="media-skeleton"></div>
             <img
               v-if="item.resourceType !== 'video'"
@@ -33,7 +38,7 @@
               :alt="item.fileName"
               loading="lazy"
               decoding="async"
-              @click="openPreview(item.fileUrl, item.fileName)"
+              @click="openPreview(item.id)"
               @load="markImageLoaded(item.id)"
               @error="markImageLoaded(item.id)"
             />
@@ -71,7 +76,37 @@
 
     <div v-if="previewVisible" class="image-preview" @click.self="closePreview">
       <button class="image-preview__close" type="button" aria-label="关闭预览" @click="closePreview">×</button>
-      <img :src="previewImage" :alt="previewTitle" class="image-preview__image" />
+      <button
+        v-if="canBrowsePreview"
+        class="image-preview__arrow image-preview__arrow--left"
+        type="button"
+        aria-label="上一张"
+        @click.stop="switchPreview(-1)"
+      >
+        ‹
+      </button>
+      <div v-if="!previewImageLoaded" class="image-preview__loader">
+        <span class="image-preview__loader-bar"></span>
+      </div>
+      <img
+        :key="previewImage"
+        :src="previewImage"
+        :alt="previewTitle"
+        class="image-preview__image"
+        :class="{ 'is-loaded': previewImageLoaded }"
+        decoding="async"
+        @load="markPreviewImageLoaded"
+        @error="markPreviewImageLoaded"
+      />
+      <button
+        v-if="canBrowsePreview"
+        class="image-preview__arrow image-preview__arrow--right"
+        type="button"
+        aria-label="下一张"
+        @click.stop="switchPreview(1)"
+      >
+        ›
+      </button>
     </div>
   </div>
 </template>
@@ -90,6 +125,8 @@ const selectedFilter = ref('all');
 const previewVisible = ref(false);
 const previewImage = ref('');
 const previewTitle = ref('');
+const previewImageLoaded = ref(false);
+const previewIndex = ref(-1);
 const originalViewportContent = ref('');
 const page = ref(1);
 const pageSize = 12;
@@ -99,6 +136,7 @@ const resourceLoading = ref(false);
 const loadedImageMap = reactive<Record<string, boolean>>({});
 let lastTouchEndAt = 0;
 let scrollTicking = false;
+let previewTouchStartX = 0;
 
 const isCollectionShare = computed(() => detail.value?.shareLink?.targetType === 'collection');
 const selectedCategory = computed(() => {
@@ -139,6 +177,10 @@ const filterOptions = computed(() => {
 const filteredResources = computed(() => {
   return detail.value?.resourceList || [];
 });
+const imageResources = computed(() => {
+  return filteredResources.value.filter((item: any) => item.resourceType !== 'video' && item.fileUrl);
+});
+const canBrowsePreview = computed(() => imageResources.value.length > 1);
 
 watch(selectedFilter, () => {
   if (!detail.value || !isCollectionShare.value) return;
@@ -150,6 +192,9 @@ onMounted(async () => {
   document.addEventListener('gesturestart', preventGestureZoom, { passive: false });
   document.addEventListener('dblclick', preventGestureZoom, { passive: false });
   document.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
+  document.addEventListener('keydown', handlePreviewKeydown);
+  document.addEventListener('touchstart', handlePreviewTouchStart, { passive: true });
+  document.addEventListener('touchend', handlePreviewTouchEnd, { passive: false });
   window.addEventListener('scroll', handleWindowScroll, { passive: true });
   const code = String(route.params.code || '');
   if (!code) {
@@ -165,6 +210,9 @@ onUnmounted(() => {
   document.removeEventListener('gesturestart', preventGestureZoom);
   document.removeEventListener('dblclick', preventGestureZoom);
   document.removeEventListener('touchend', preventDoubleTapZoom);
+  document.removeEventListener('keydown', handlePreviewKeydown);
+  document.removeEventListener('touchstart', handlePreviewTouchStart);
+  document.removeEventListener('touchend', handlePreviewTouchEnd);
   window.removeEventListener('scroll', handleWindowScroll);
   restoreViewport();
 });
@@ -216,10 +264,32 @@ function normalizeResourceList(resourceList: any[]) {
   }));
 }
 
-function openPreview(url: string, title: string) {
-  previewImage.value = url;
-  previewTitle.value = title;
+function openPreview(id: string) {
+  const index = imageResources.value.findIndex((item: any) => item.id === id);
+  if (index < 0) return;
+  setPreviewByIndex(index);
   previewVisible.value = true;
+}
+
+function setPreviewByIndex(index: number) {
+  const total = imageResources.value.length;
+  if (!total) return;
+  const nextIndex = (index + total) % total;
+  const nextImage = imageResources.value[nextIndex];
+  previewIndex.value = nextIndex;
+  previewImage.value = nextImage.fileUrl;
+  previewTitle.value = nextImage.fileName;
+  previewImageLoaded.value = false;
+  preloadPreviewNeighbor(nextIndex);
+}
+
+function switchPreview(direction: number) {
+  if (!canBrowsePreview.value) return;
+  setPreviewByIndex(previewIndex.value + direction);
+}
+
+function markPreviewImageLoaded() {
+  previewImageLoaded.value = true;
 }
 
 function markImageLoaded(id: string) {
@@ -230,6 +300,20 @@ function closePreview() {
   previewVisible.value = false;
   previewImage.value = '';
   previewTitle.value = '';
+  previewImageLoaded.value = false;
+  previewIndex.value = -1;
+}
+
+function preloadPreviewNeighbor(index: number) {
+  const total = imageResources.value.length;
+  if (total <= 1) return;
+  [-1, 1].forEach((offset) => {
+    const neighbor = imageResources.value[(index + offset + total) % total];
+    if (!neighbor?.fileUrl) return;
+    const image = new Image();
+    image.decoding = 'async';
+    image.src = neighbor.fileUrl;
+  });
 }
 
 function resolveVideoPosterURL(item: any) {
@@ -261,11 +345,40 @@ function restoreViewport() {
 }
 
 function preventDoubleTapZoom(event: TouchEvent) {
+  if (previewVisible.value) return;
   const now = Date.now();
   if (now - lastTouchEndAt <= 300) {
     event.preventDefault();
   }
   lastTouchEndAt = now;
+}
+
+function handlePreviewKeydown(event: KeyboardEvent) {
+  if (!previewVisible.value) return;
+  if (event.key === 'Escape') {
+    closePreview();
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    switchPreview(-1);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    switchPreview(1);
+  }
+}
+
+function handlePreviewTouchStart(event: TouchEvent) {
+  if (!previewVisible.value) return;
+  previewTouchStartX = event.changedTouches[0]?.clientX || 0;
+}
+
+function handlePreviewTouchEnd(event: TouchEvent) {
+  if (!previewVisible.value || !previewTouchStartX) return;
+  const endX = event.changedTouches[0]?.clientX || 0;
+  const distance = endX - previewTouchStartX;
+  previewTouchStartX = 0;
+  if (Math.abs(distance) < 56) return;
+  event.preventDefault();
+  switchPreview(distance > 0 ? -1 : 1);
 }
 
 function handleWindowScroll() {
@@ -405,6 +518,8 @@ function handleWindowScroll() {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(116, 153, 230, 0.16);
   box-shadow: 0 14px 32px rgba(60, 102, 190, 0.08);
+  animation: card-reveal 0.5s ease both;
+  animation-delay: var(--reveal-delay, 0ms);
 }
 
 .media-card img,
@@ -418,11 +533,18 @@ function handleWindowScroll() {
 .media-card img {
   cursor: zoom-in;
   opacity: 0;
-  transition: opacity 0.28s ease;
+  filter: blur(10px);
+  transform: scale(1.012);
+  transition:
+    opacity 0.34s ease,
+    filter 0.34s ease,
+    transform 0.34s ease;
 }
 
 .media-card img.is-loaded {
   opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
 }
 
 .media-card video {
@@ -513,14 +635,105 @@ function handleWindowScroll() {
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
+  z-index: 3;
+}
+
+.image-preview__arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  width: 46px;
+  height: 64px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 48px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.image-preview__arrow:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.image-preview__arrow--left {
+  left: 16px;
+}
+
+.image-preview__arrow--right {
+  right: 16px;
+}
+
+.image-preview__loader {
+  position: absolute;
+  inset: 20px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.04) 100%),
+    rgba(255, 255, 255, 0.05);
+}
+
+.image-preview__loader-bar {
+  width: min(280px, 62vw);
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.image-preview__loader-bar::after {
+  content: '';
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(120, 188, 255, 0.1), rgba(120, 188, 255, 0.95));
+  animation: preview-loading 1s ease-in-out infinite;
 }
 
 .image-preview__image {
+  position: relative;
+  z-index: 2;
   display: block;
   max-width: min(100%, 960px);
   max-height: min(100vh - 80px, 90vh);
   border-radius: 18px;
+  opacity: 0;
+  filter: blur(12px);
+  transform: scale(0.99);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+  transition:
+    opacity 0.35s ease,
+    filter 0.35s ease,
+    transform 0.35s ease;
+}
+
+.image-preview__image.is-loaded {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+
+@keyframes card-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes image-loading {
@@ -530,6 +743,16 @@ function handleWindowScroll() {
 
   100% {
     background-position: calc(100% + 220px) 0, 0 0;
+  }
+}
+
+@keyframes preview-loading {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(260%);
   }
 }
 
@@ -558,6 +781,31 @@ function handleWindowScroll() {
 
   .meta-inline {
     padding: 0 28px 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .image-preview {
+    padding: 14px;
+  }
+
+  .image-preview__arrow {
+    width: 38px;
+    height: 54px;
+    font-size: 38px;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .image-preview__arrow--left {
+    left: 8px;
+  }
+
+  .image-preview__arrow--right {
+    right: 8px;
+  }
+
+  .image-preview__image {
+    max-height: min(100vh - 72px, 88vh);
   }
 }
 </style>
