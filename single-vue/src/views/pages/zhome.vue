@@ -67,7 +67,7 @@
                                 </div>
                                 <el-image
                                   v-if="resource.resourceType !== 'video'"
-                                  :src="resource.fileUrl"
+                                  :src="resource.thumbnailUrl || resource.fileUrl"
                                   :alt="resource.fileName"
                                   :preview-src-list="[resource.fileUrl]"
                                   :initial-index="0"
@@ -331,7 +331,15 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="uploadDialogVisible" title="上传分类资源" width="560px" @closed="resetUploadDialog">
+    <el-dialog
+      v-model="uploadDialogVisible"
+      title="上传分类资源"
+      width="560px"
+      :close-on-click-modal="!uploading"
+      :close-on-press-escape="!uploading"
+      :show-close="!uploading"
+      @closed="resetUploadDialog"
+    >
       <div class="upload-wall">
         <el-upload
           v-model:file-list="uploadFileList"
@@ -345,7 +353,7 @@
           <template #file="{ file }">
             <div class="upload-preview-card">
               <img
-                v-if="getUploadPreview(file)?.type === 'image'"
+                v-if="getUploadPreview(file)?.type === 'image' && getUploadPreview(file)?.url"
                 class="upload-preview-card__media"
                 :src="getUploadPreview(file)?.url"
                 :alt="file.name"
@@ -361,6 +369,9 @@
                   <span class="upload-preview-card__play"></span>
                 </div>
               </template>
+              <div v-else-if="getUploadPreview(file)?.type === 'image'" class="upload-preview-card__placeholder">
+                <span>IMG</span>
+              </div>
               <div v-else class="upload-preview-card__placeholder">
                 <span>{{ getFileExt(file.name) }}</span>
               </div>
@@ -369,6 +380,7 @@
                 class="upload-preview-card__remove"
                 type="button"
                 aria-label="移除资源"
+                :disabled="uploading"
                 @click.stop="removeSelectedUploadFile(file)"
               >
                 ×
@@ -379,17 +391,41 @@
             <div class="upload-wall__tip">点击卡片选择资源，上传后会展示在当前分类的资源墙里。</div>
           </template>
         </el-upload>
+        <div v-if="uploading || uploadFileList.length" class="upload-progress-panel">
+          <div class="upload-progress-panel__header">
+            <span>{{ uploadProgressText }}</span>
+            <strong>{{ uploadOverallPercent }}%</strong>
+          </div>
+          <el-progress :percentage="uploadOverallPercent" :stroke-width="10" :show-text="false" />
+          <div v-if="uploading" class="upload-progress-panel__current">
+            正在上传：{{ currentUploadingName || '准备中' }}
+          </div>
+          <div class="upload-progress-list">
+            <div v-for="file in uploadFileList" :key="file.uid" class="upload-progress-item">
+              <span :title="file.name">{{ file.name }}</span>
+              <el-progress
+                :percentage="getUploadProgress(file)"
+                :stroke-width="6"
+                :status="getUploadProgressStatus(file)"
+                :show-text="false"
+              />
+              <em>{{ getUploadProgress(file) }}%</em>
+            </div>
+          </div>
+        </div>
       </div>
       <template #footer>
-        <el-button @click="uploadDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="submitUpload">上传</el-button>
+        <el-button :disabled="uploading" @click="uploadDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="uploading" @click="submitUpload">
+          {{ uploading ? '上传中' : '上传' }}
+        </el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import type { UploadFile, UploadFiles, UploadUserFile } from 'element-plus';
 import { ElMessageBox } from 'element-plus';
 import { Delete, Plus } from '@element-plus/icons-vue';
@@ -473,10 +509,26 @@ const uploadTargetCollectionId = ref('');
 const uploadTargetCategoryId = ref('');
 const uploadFileList = ref<UploadUserFile[]>([]);
 const uploadPreviewMap = reactive<Record<string, { type: 'image' | 'video' | 'file'; url: string; posterUrl: string }>>({});
+const uploadProgressMap = reactive<Record<string, number>>({});
+const uploadedFileMap = reactive<Record<string, boolean>>({});
+const currentUploadingName = ref('');
 const categoryItemParentName = ref('');
 const draggingCategoryId = ref('');
 const draggingResourceId = ref('');
 const dragOverResourceId = ref('');
+const uploadOverallPercent = computed(() => {
+  if (!uploadFileList.value.length) return 0;
+  const total = uploadFileList.value.reduce((sum, file) => sum + getUploadProgress(file), 0);
+  return Math.round(total / uploadFileList.value.length);
+});
+const uploadProgressText = computed(() => {
+  if (!uploadFileList.value.length) return '等待选择资源';
+  const doneCount = uploadFileList.value.filter((file) => uploadedFileMap[String(file.uid)]).length;
+  if (uploading.value) {
+    return `已上传 ${doneCount}/${uploadFileList.value.length} 个资源`;
+  }
+  return `待上传 ${uploadFileList.value.length} 个资源`;
+});
 
 async function refreshList() {
   loading.value = true;
@@ -718,6 +770,7 @@ function normalizeResourceList(resourceList: any[]) {
   return resourceList.map((item) => ({
     ...item,
     fileUrl: resolveResourceURL(item.url || item.storagePath || ''),
+    thumbnailUrl: resolveResourceURL(item.thumbnailUrl || item.previewUrl || ''),
     posterUrl: resolveVideoPosterURL(item),
   }));
 }
@@ -884,6 +937,7 @@ function handleFileRemove(file: UploadFile, fileList: UploadFiles) {
 
 function resetUploadDialog() {
   Object.keys(uploadPreviewMap).forEach((uid) => removeUploadPreview(Number(uid)));
+  resetUploadProgress();
   uploadFileList.value = [];
 }
 
@@ -897,25 +951,82 @@ function getFileExt(fileName: string) {
 }
 
 function removeSelectedUploadFile(file: UploadUserFile) {
+  if (uploading.value) return;
   uploadFileList.value = uploadFileList.value.filter((item) => item.uid !== file.uid);
   removeUploadPreview(file.uid);
+  delete uploadProgressMap[String(file.uid)];
+  delete uploadedFileMap[String(file.uid)];
 }
 
 function prepareUploadPreview(file: UploadFile) {
   if (!file.raw) return;
   removeUploadPreview(file.uid);
-  const url = URL.createObjectURL(file.raw);
   const fileType = file.raw.type || '';
   if (fileType.startsWith('image/')) {
-    uploadPreviewMap[String(file.uid)] = { type: 'image', url, posterUrl: '' };
+    uploadPreviewMap[String(file.uid)] = { type: 'image', url: '', posterUrl: '' };
+    createImageUploadThumbnail(file.uid, file.raw);
     return;
   }
+  const url = URL.createObjectURL(file.raw);
   if (fileType.startsWith('video/')) {
     uploadPreviewMap[String(file.uid)] = { type: 'video', url, posterUrl: '' };
     captureUploadVideoPoster(file.uid, url);
     return;
   }
   uploadPreviewMap[String(file.uid)] = { type: 'file', url, posterUrl: '' };
+}
+
+function createImageUploadThumbnail(uid: number, file: File) {
+  const sourceUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.decoding = 'async';
+  image.onload = () => {
+    const maxSize = 320;
+    const scale = Math.min(1, maxSize / Math.max(image.naturalWidth || maxSize, image.naturalHeight || maxSize));
+    const width = Math.max(1, Math.round((image.naturalWidth || maxSize) * scale));
+    const height = Math.max(1, Math.round((image.naturalHeight || maxSize) * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      setUploadPreviewFallback(uid, sourceUrl);
+      return;
+    }
+    context.drawImage(image, 0, 0, width, height);
+    canvas.toBlob(
+      (blob) => {
+        const preview = uploadPreviewMap[String(uid)];
+        if (!preview || preview.type !== 'image') {
+          URL.revokeObjectURL(sourceUrl);
+          return;
+        }
+        if (!blob) {
+          setUploadPreviewFallback(uid, sourceUrl);
+          return;
+        }
+        URL.revokeObjectURL(sourceUrl);
+        if (preview.url) URL.revokeObjectURL(preview.url);
+        preview.url = URL.createObjectURL(blob);
+      },
+      'image/jpeg',
+      0.76
+    );
+  };
+  image.onerror = () => {
+    setUploadPreviewFallback(uid, sourceUrl);
+  };
+  image.src = sourceUrl;
+}
+
+function setUploadPreviewFallback(uid: number, sourceUrl: string) {
+  const preview = uploadPreviewMap[String(uid)];
+  if (!preview || preview.type !== 'image') {
+    URL.revokeObjectURL(sourceUrl);
+    return;
+  }
+  if (preview.url && preview.url !== sourceUrl) URL.revokeObjectURL(preview.url);
+  preview.url = sourceUrl;
 }
 
 function removeUploadPreview(uid?: number) {
@@ -990,12 +1101,22 @@ async function submitUpload() {
   }
 
   uploading.value = true;
+  resetUploadProgress();
   try {
-    for (const file of rawFiles) {
+    for (const [index, file] of rawFiles.entries()) {
+      const uploadFile = uploadFileList.value.find((item) => item.raw === file);
+      const uploadKey = uploadFile ? String(uploadFile.uid) : String(index);
+      currentUploadingName.value = file.name;
+      uploadProgressMap[uploadKey] = 0;
       const formData = new FormData();
       formData.append('file', file);
       formData.append('categoryId', uploadTargetCategoryId.value);
-      await uploadCategoryResource(uploadTargetCollectionId.value, formData);
+      await uploadCategoryResource(uploadTargetCollectionId.value, formData, (event) => {
+        if (!event.total) return;
+        uploadProgressMap[uploadKey] = Math.min(99, Math.round((event.loaded * 100) / event.total));
+      });
+      uploadProgressMap[uploadKey] = 100;
+      uploadedFileMap[uploadKey] = true;
     }
     toast(`成功上传 ${rawFiles.length} 个资源`, 'success');
     uploadDialogVisible.value = false;
@@ -1004,7 +1125,22 @@ async function submitUpload() {
     await loadInnerCategoryDetail(uploadTargetCategoryId.value);
   } finally {
     uploading.value = false;
+    currentUploadingName.value = '';
   }
+}
+
+function resetUploadProgress() {
+  Object.keys(uploadProgressMap).forEach((uid) => delete uploadProgressMap[uid]);
+  Object.keys(uploadedFileMap).forEach((uid) => delete uploadedFileMap[uid]);
+  currentUploadingName.value = '';
+}
+
+function getUploadProgress(file: UploadUserFile) {
+  return uploadProgressMap[String(file.uid)] || 0;
+}
+
+function getUploadProgressStatus(file: UploadUserFile) {
+  return uploadedFileMap[String(file.uid)] ? 'success' : undefined;
 }
 
 async function confirmDeleteCollection(collectionId: string) {
@@ -1419,6 +1555,9 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
 
 .upload-wall {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
   justify-content: center;
   padding: 10px 0 4px;
 }
@@ -1536,6 +1675,11 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   line-height: 1;
 }
 
+.upload-preview-card__remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .upload-wall__tip {
   width: 100%;
   margin-top: 12px;
@@ -1544,9 +1688,74 @@ function handleInnerCategoryPageChange(collectionId: string, page: number) {
   text-align: center;
 }
 
+.upload-progress-panel {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid rgba(47, 107, 255, 0.14);
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.upload-progress-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #526b91;
+  font-size: 13px;
+}
+
+.upload-progress-panel__header strong {
+  color: #2f6fed;
+  font-size: 16px;
+}
+
+.upload-progress-panel__current {
+  overflow: hidden;
+  margin-top: 10px;
+  color: #6d82a7;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-progress-list {
+  display: grid;
+  gap: 8px;
+  max-height: 160px;
+  margin-top: 12px;
+  overflow-y: auto;
+}
+
+.upload-progress-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 38px;
+  gap: 10px;
+  align-items: center;
+  color: #526b91;
+  font-size: 12px;
+}
+
+.upload-progress-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-progress-item em {
+  color: #7b8dad;
+  font-style: normal;
+  text-align: right;
+}
+
 @media (max-width: 560px) {
   .share-result {
     grid-template-columns: 1fr;
+  }
+
+  .upload-progress-item {
+    grid-template-columns: minmax(0, 1fr) 82px 34px;
   }
 }
 </style>

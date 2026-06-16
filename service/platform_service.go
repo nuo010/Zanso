@@ -872,7 +872,7 @@ func UploadCategoryResource(c *gin.Context) {
 		storedFileName,
 	)
 	storagePath := strings.ReplaceAll(relativePath, "\\", "/")
-	publicURL, posterURL, err := saveUploadedResourceWithPoster(c, file, storagePath, resourceType)
+	publicURL, posterURL, thumbnailURL, err := saveUploadedResourceWithPoster(c, file, storagePath, resourceType)
 	if err != nil {
 		result.ErrSetMsg(c, "保存资源文件失败")
 		return
@@ -889,6 +889,7 @@ func UploadCategoryResource(c *gin.Context) {
 		StoragePath:  storagePath,
 		URL:          publicURL,
 		PosterURL:    posterURL,
+		ThumbnailURL: thumbnailURL,
 		Status:       model.ResourceStatusActive,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -905,6 +906,7 @@ func UploadCategoryResource(c *gin.Context) {
 		MimeType:       file.Header.Get("Content-Type"),
 		URL:            publicURL,
 		PosterURL:      posterURL,
+		ThumbnailURL:   thumbnailURL,
 		Sort:           sortValue,
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -968,7 +970,7 @@ func DeleteResource(c *gin.Context) {
 		return
 	}
 
-	removeResourceFiles(c, []string{resource.StoragePath, resource.PosterURL})
+	removeResourceFiles(c, []string{resource.StoragePath, resource.PosterURL, resource.ThumbnailURL})
 
 	result.OkSetData(c, gin.H{"id": resourceID})
 }
@@ -1516,27 +1518,55 @@ func buildPublicAssetURL(c *gin.Context, relativePath string) string {
 	return fmt.Sprintf("%s/uploads/%s", requestBaseURL(c), cleanPath)
 }
 
-func saveUploadedResourceWithPoster(c *gin.Context, file *multipart.FileHeader, storagePath string, resourceType string) (string, string, error) {
+func saveUploadedResourceWithPoster(c *gin.Context, file *multipart.FileHeader, storagePath string, resourceType string) (string, string, string, error) {
+	if resourceType == "image" {
+		tempImagePath, err := saveUploadedFileToTemp(file, filepath.Ext(storagePath))
+		if err != nil {
+			return "", "", "", err
+		}
+		defer removeTempFile(tempImagePath)
+
+		publicURL, err := saveResourceFile(c, tempImagePath, storagePath, file.Header.Get("Content-Type"))
+		if err != nil {
+			return "", "", "", err
+		}
+
+		thumbnailTempPath, err := generateImageThumbnail(tempImagePath)
+		if err != nil {
+			util.Log().Error("生成图片缩略图失败: %v", err)
+			return publicURL, "", "", nil
+		}
+		defer removeTempFile(thumbnailTempPath)
+
+		thumbnailStoragePath := imageThumbnailStoragePath(storagePath)
+		thumbnailURL, err := saveResourceFile(c, thumbnailTempPath, thumbnailStoragePath, "image/jpeg")
+		if err != nil {
+			util.Log().Error("保存图片缩略图失败: %v", err)
+			return publicURL, "", "", nil
+		}
+		return publicURL, "", thumbnailURL, nil
+	}
+
 	if resourceType != "video" {
 		publicURL, err := saveUploadedResource(c, file, storagePath)
-		return publicURL, "", err
+		return publicURL, "", "", err
 	}
 
 	tempVideoPath, err := saveUploadedFileToTemp(file, filepath.Ext(storagePath))
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	defer removeTempFile(tempVideoPath)
 
 	publicURL, err := saveResourceFile(c, tempVideoPath, storagePath, file.Header.Get("Content-Type"))
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	posterTempPath, err := generateVideoPoster(tempVideoPath)
 	if err != nil {
 		util.Log().Error("生成视频封面失败: %v", err)
-		return publicURL, "", nil
+		return publicURL, "", "", nil
 	}
 	defer removeTempFile(posterTempPath)
 
@@ -1544,9 +1574,9 @@ func saveUploadedResourceWithPoster(c *gin.Context, file *multipart.FileHeader, 
 	posterURL, err := saveResourceFile(c, posterTempPath, posterStoragePath, "image/jpeg")
 	if err != nil {
 		util.Log().Error("保存视频封面失败: %v", err)
-		return publicURL, "", nil
+		return publicURL, "", "", nil
 	}
-	return publicURL, posterURL, nil
+	return publicURL, posterURL, "", nil
 }
 
 func saveUploadedResource(c *gin.Context, file *multipart.FileHeader, storagePath string) (string, error) {
@@ -1670,10 +1700,44 @@ func generateVideoPoster(videoPath string) (string, error) {
 	return posterPath, nil
 }
 
+func generateImageThumbnail(imagePath string) (string, error) {
+	tempDir := filepath.Join(os.TempDir(), "zanso", "thumbnails")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", err
+	}
+	thumbnailPath := filepath.Join(tempDir, randomResourceFileName(16)+".jpg")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx,
+		"ffmpeg",
+		"-y",
+		"-i", imagePath,
+		"-vf", "scale='min(480,iw)':-2",
+		"-frames:v", "1",
+		"-q:v", "4",
+		thumbnailPath,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		_ = os.Remove(thumbnailPath)
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("ffmpeg 生成图片缩略图超时")
+		}
+		return "", fmt.Errorf("ffmpeg 生成图片缩略图失败: %w, output: %s", err, string(output))
+	}
+	return thumbnailPath, nil
+}
+
 func videoPosterStoragePath(videoStoragePath string) string {
 	ext := filepath.Ext(videoStoragePath)
 	basePath := strings.TrimSuffix(videoStoragePath, ext)
 	return strings.ReplaceAll(basePath+"_poster.jpg", "\\", "/")
+}
+
+func imageThumbnailStoragePath(imageStoragePath string) string {
+	ext := filepath.Ext(imageStoragePath)
+	basePath := strings.TrimSuffix(imageStoragePath, ext)
+	return strings.ReplaceAll(basePath+"_thumb.jpg", "\\", "/")
 }
 
 func removeTempFile(path string) {
@@ -1809,16 +1873,17 @@ func collectCategoryResourcePaths(categoryID string, categoryItemID string) ([]s
 		).Where("rel.collection_id = ?", categoryID)
 	}
 	type resourcePathRow struct {
-		StoragePath string
-		PosterURL   string
+		StoragePath  string
+		PosterURL    string
+		ThumbnailURL string
 	}
 	var rows []resourcePathRow
-	if err := query.Select("tbl_resource.storage_path, tbl_resource.poster_url").Scan(&rows).Error; err != nil {
+	if err := query.Select("tbl_resource.storage_path, tbl_resource.poster_url, tbl_resource.thumbnail_url").Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	paths := make([]string, 0, len(rows)*2)
+	paths := make([]string, 0, len(rows)*3)
 	for _, row := range rows {
-		paths = append(paths, row.StoragePath, row.PosterURL)
+		paths = append(paths, row.StoragePath, row.PosterURL, row.ThumbnailURL)
 	}
 	return paths, nil
 }

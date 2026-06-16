@@ -103,6 +103,7 @@ type Resource struct {
 	StoragePath  string    `json:"storagePath" gorm:"size:512;not null"`
 	URL          string    `json:"url" gorm:"size:512;not null"`
 	PosterURL    string    `json:"posterUrl" gorm:"size:512"`
+	ThumbnailURL string    `json:"thumbnailUrl" gorm:"size:512"`
 	Status       string    `json:"status" gorm:"size:32;not null;default:active"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
@@ -124,6 +125,7 @@ type CategoryResourceRelation struct {
 	MimeType       string    `json:"mimeType" gorm:"size:128"`
 	URL            string    `json:"url" gorm:"size:512;not null"`
 	PosterURL      string    `json:"posterUrl" gorm:"size:512"`
+	ThumbnailURL   string    `json:"thumbnailUrl" gorm:"size:512"`
 	Sort           int       `json:"sort"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`

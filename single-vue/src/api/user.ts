@@ -142,7 +142,7 @@ export function getCategoryItemDetail(id: string) {
   });
 }
 
-export function uploadCategoryResource(id: string, formData: FormData) {
+export function uploadCategoryResource(id: string, formData: FormData, onUploadProgress?: (progressEvent: any) => void) {
   return AxiosUtil({
     url: `/api/platform/collections/${id}/resources`,
     method: 'post',
@@ -150,6 +150,7 @@ export function uploadCategoryResource(id: string, formData: FormData) {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    onUploadProgress,
   });
 }
 
