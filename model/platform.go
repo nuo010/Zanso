@@ -24,8 +24,7 @@ type User struct {
 	Name         string    `json:"name" gorm:"size:120;not null"`
 	LoginName    string    `json:"loginName" gorm:"size:64;uniqueIndex;not null"`
 	PasswordHash string    `json:"-" gorm:"size:255;not null"`
-	ContactName  string    `json:"contactName" gorm:"size:64"`
-	ContactPhone string    `json:"contactPhone" gorm:"size:32"`
+	Email        string    `json:"email" gorm:"size:128"`
 	Status       string    `json:"status" gorm:"size:32;not null;default:active"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
@@ -188,11 +187,10 @@ func (Announcement) TableName() string {
 }
 
 type CreateUserRequest struct {
-	Name         string `json:"name"`
-	LoginName    string `json:"loginName"`
-	Password     string `json:"password"`
-	ContactName  string `json:"contactName"`
-	ContactPhone string `json:"contactPhone"`
+	Name      string `json:"name"`
+	LoginName string `json:"loginName"`
+	Password  string `json:"password"`
+	Email     string `json:"email"`
 }
 
 type UserLoginRequest struct {
@@ -244,12 +242,12 @@ type UpdateCategoryResourceSortRequest struct {
 }
 
 type CreateShareLinkRequest struct {
-	CollectionID string     `json:"collectionId"`
-	CategoryID   string     `json:"categoryId"`
-	TargetType   string     `json:"targetType"`
-	Title        string     `json:"title"`
-	Description  string     `json:"description"`
-	ExpiresAt    *time.Time `json:"expiresAt"`
+	CollectionID string `json:"collectionId"`
+	CategoryID   string `json:"categoryId"`
+	TargetType   string `json:"targetType"`
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	ExpiresAt    string `json:"expiresAt"`
 }
 
 type CreateAnnouncementRequest struct {
@@ -296,8 +294,7 @@ type UserWithRoles struct {
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
 	LoginName     string    `json:"loginName"`
-	ContactName   string    `json:"contactName"`
-	ContactPhone  string    `json:"contactPhone"`
+	Email         string    `json:"email"`
 	Status        string    `json:"status"`
 	RoleCodes     []string  `json:"roleCodes"`
 	RoleNames     []string  `json:"roleNames"`

@@ -14,12 +14,9 @@
       <el-table :data="users" v-loading="loading" class="user-table">
         <el-table-column prop="name" label="用户名称" min-width="160" />
         <el-table-column prop="loginName" label="登录账号" min-width="160" />
-        <el-table-column label="联系方式" min-width="180">
+        <el-table-column label="邮箱" min-width="200">
           <template #default="{ row }">
-            <div class="contact-block">
-              <strong>{{ row.contactName || '--' }}</strong>
-              <span>{{ row.contactPhone || '--' }}</span>
-            </div>
+            <span class="email-text">{{ row.email || '--' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="当前角色" width="140">
@@ -218,19 +215,9 @@ async function handleStatusChange(user: PlatformUser) {
   padding-top: 18px;
 }
 
-.contact-block strong,
-.contact-block span {
-  display: block;
-}
-
-.contact-block strong {
-  color: #17315f;
-}
-
-.contact-block span {
-  margin-top: 4px;
+.email-text {
   color: #6d82a7;
-  font-size: 12px;
+  word-break: break-all;
 }
 
 .role-select {

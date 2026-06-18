@@ -3,12 +3,14 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +23,8 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
+
+var loginNamePattern = regexp.MustCompile(`^[A-Za-z0-9]{6,}$`)
 
 func CreateUser(c *gin.Context) {
 	var req model.CreateUserRequest
@@ -36,6 +40,20 @@ func CreateUser(c *gin.Context) {
 		result.ErrSetMsg(c, "登录账号和密码不能为空")
 		return
 	}
+	loginName := strings.TrimSpace(req.LoginName)
+	if !loginNamePattern.MatchString(loginName) {
+		result.ErrSetMsg(c, "登录账号只能使用字母和数字，且至少 6 位")
+		return
+	}
+
+	var existsUser model.User
+	if err := db.DB.Where("login_name = ?", loginName).Take(&existsUser).Error; err == nil {
+		result.ErrSetMsg(c, "登录账号已存在")
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		result.ErrSetMsg(c, "检查登录账号失败")
+		return
+	}
 
 	passwordHash, err := util.HashPassword(strings.TrimSpace(req.Password))
 	if err != nil {
@@ -47,10 +65,9 @@ func CreateUser(c *gin.Context) {
 	user := model.User{
 		ID:           util.GetUuid(),
 		Name:         strings.TrimSpace(req.Name),
-		LoginName:    strings.TrimSpace(req.LoginName),
+		LoginName:    loginName,
 		PasswordHash: passwordHash,
-		ContactName:  strings.TrimSpace(req.ContactName),
-		ContactPhone: strings.TrimSpace(req.ContactPhone),
+		Email:        strings.TrimSpace(req.Email),
 		Status:       model.UserStatusActive,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -345,8 +362,7 @@ func buildUsersWithRoles(users []model.User) ([]model.UserWithRoles, error) {
 			ID:            user.ID,
 			Name:          user.Name,
 			LoginName:     user.LoginName,
-			ContactName:   user.ContactName,
-			ContactPhone:  user.ContactPhone,
+			Email:         user.Email,
 			Status:        user.Status,
 			RoleCodes:     roleCodeMap[user.ID],
 			RoleNames:     roleNameMap[user.ID],
@@ -1110,6 +1126,11 @@ func CreateShareLink(c *gin.Context) {
 	}
 
 	now := util.GetTime()
+	expiresAt, err := parseShareExpiresAt(req.ExpiresAt)
+	if err != nil {
+		result.ErrSetMsg(c, "到期时间格式错误")
+		return
+	}
 	shareLink := model.ShareLink{
 		ID:             util.GetUuid(),
 		UserID:         currentUserID,
@@ -1120,7 +1141,7 @@ func CreateShareLink(c *gin.Context) {
 		Title:          shareTitle(req, category, item),
 		Description:    shareDescription(req, category, item),
 		Status:         model.ShareStatusActive,
-		ExpiresAt:      req.ExpiresAt,
+		ExpiresAt:      expiresAt,
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
@@ -1886,6 +1907,28 @@ func shareDescription(req model.CreateShareLinkRequest, category model.Category,
 		return strings.TrimSpace(item.Description)
 	}
 	return strings.TrimSpace(category.Description)
+}
+
+func parseShareExpiresAt(value string) (*time.Time, error) {
+	expiresAtText := strings.TrimSpace(value)
+	if expiresAtText == "" {
+		return nil, nil
+	}
+	layouts := []string{
+		time.RFC3339,
+		time.RFC3339Nano,
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+	}
+	var parseErr error
+	for _, layout := range layouts {
+		parsed, err := time.ParseInLocation(layout, expiresAtText, time.Local)
+		if err == nil {
+			return &parsed, nil
+		}
+		parseErr = err
+	}
+	return nil, parseErr
 }
 
 func currentShareTitle(shareLink model.ShareLink, category model.Category, item *model.CategoryItem) string {

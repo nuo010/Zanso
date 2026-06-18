@@ -309,7 +309,6 @@
           <el-date-picker
             v-model="shareForm.expiresAt"
             type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="不选则长期有效"
             style="width: 100%"
           />
@@ -497,7 +496,7 @@ const shareForm = reactive({
   categoryId: '',
   title: '',
   description: '',
-  expiresAt: '',
+  expiresAt: null as Date | null,
 });
 
 const generatedShare = reactive({
@@ -595,7 +594,7 @@ function openShareDialog(
   shareForm.categoryId = categoryId;
   shareForm.title = title || '';
   shareForm.description = description || '';
-  shareForm.expiresAt = '';
+  shareForm.expiresAt = null;
   generatedShare.title = '';
   generatedShare.shareUrl = '';
   shareDialogVisible.value = true;
@@ -705,7 +704,7 @@ async function handleSubmitShare() {
       targetType: shareForm.targetType,
       title: shareForm.title.trim(),
       description: shareForm.description.trim(),
-      expiresAt: shareForm.expiresAt || undefined,
+      expiresAt: shareForm.expiresAt?.toISOString(),
     });
     generatedShare.title = res.data?.shareLink?.title || shareForm.title.trim();
     generatedShare.shareUrl = res.data?.shareUrl || '';

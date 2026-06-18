@@ -196,8 +196,7 @@ CREATE TABLE `tbl_user` (
   `name` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户名称',
   `login_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '登录账号',
   `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '密码哈希',
-  `contact_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '联系人姓名',
-  `contact_phone` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '联系人电话',
+  `email` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '邮箱',
   `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active' COMMENT '状态',
   `created_at` datetime(3) DEFAULT NULL COMMENT '创建时间',
   `updated_at` datetime(3) DEFAULT NULL COMMENT '更新时间',
@@ -232,8 +231,8 @@ INSERT INTO `tbl_role` (`id`, `name`, `code`, `description`, `status`, `created_
 -- 默认账号：admin
 -- 默认密码：Admin@123456
 -- ----------------------------
-INSERT INTO `tbl_user` (`id`, `name`, `login_name`, `password_hash`, `contact_name`, `contact_phone`, `status`, `created_at`, `updated_at`) VALUES
-('user_admin_000000000000000001', '系统管理员', 'admin', '$2a$10$QaOyM5YpLEOxvnXduE54duwkOrEAyt1gU9YJUdnKm5maFtTHw3ORu', '系统管理员', '13800000000', 'active', NOW(3), NOW(3));
+INSERT INTO `tbl_user` (`id`, `name`, `login_name`, `password_hash`, `email`, `status`, `created_at`, `updated_at`) VALUES
+('user_admin_000000000000000001', '系统管理员', 'admin', '$2a$10$QaOyM5YpLEOxvnXduE54duwkOrEAyt1gU9YJUdnKm5maFtTHw3ORu', '', 'active', NOW(3), NOW(3));
 
 -- ----------------------------
 -- 初始化默认管理员角色关联

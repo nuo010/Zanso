@@ -4,62 +4,62 @@
       <div class="container">
         <a href="#" class="logo" @click.prevent="scrollToTop"><span>Z</span>anso</a>
         <div class="nav-links">
-          <a href="#" @click.prevent="scrollToSection('features')">功能</a>
-          <a href="#" @click.prevent="scrollToSection('advantages')">优势</a>
-          <a href="#" @click.prevent="scrollToSection('usecases')">适用场景</a>
-          <a :href="appUrl" class="btn btn-primary nav-action" @click.prevent="goApp">开始使用</a>
+          <a href="#" @click.prevent="scrollToSection('features')">服务能力</a>
+          <a href="#" @click.prevent="scrollToSection('advantages')">商业价值</a>
+          <a href="#" @click.prevent="scrollToSection('usecases')">适合谁用</a>
+          <a :href="appUrl" class="btn btn-primary nav-action" @click.prevent="goApp">立即开通</a>
         </div>
       </div>
     </nav>
 
     <section class="hero">
       <div class="container">
-        <h1>轻松管理并分享你的<br><span>数字展册与多媒体资源</span></h1>
-        <p>Zanso 是一套轻量级数字资产管理平台。只需几分钟即可创建展册、分类整理资源、一键生成分享链接，让内容展示从未如此简单。</p>
+        <h1>把你的作品、产品和案例<br><span>变成更好成交的展示页</span></h1>
+        <p>Zanso 帮你快速搭建专属数字展册，把图片、视频、项目资料整理成可分享、可交付、可持续复用的线上展示服务。客户看得清楚，沟通更高效，成交自然更利索。</p>
         <div class="hero-actions">
-          <a :href="appUrl" class="btn btn-primary btn-hero" @click.prevent="goApp">开始使用</a>
-          <a href="#" class="btn btn-outline btn-hero" @click.prevent="scrollToSection('features')">了解更多</a>
+          <a :href="appUrl" class="btn btn-primary btn-hero" @click.prevent="goApp">马上创建展册</a>
+          <a href="#" class="btn btn-outline btn-hero" @click.prevent="scrollToSection('advantages')">看看能赚在哪</a>
         </div>
       </div>
     </section>
 
     <section id="features">
       <div class="container text-center">
-        <span class="section-label">核心功能</span>
-        <h2 class="section-title">一套工具，搞定展示全流程</h2>
-        <p class="section-subtitle">从创建展册到分享出去，每个环节都替你考虑好了。</p>
+        <span class="section-label">服务能力</span>
+        <h2 class="section-title">把展示、交付、获客放进一套系统</h2>
+        <p class="section-subtitle">不是简单存文件，而是帮你把内容包装成客户愿意看的商业展示。</p>
       </div>
       <div class="container">
         <div class="feature-grid">
           <div class="feature-card">
             <div class="feature-icon feature-blue">📖</div>
-            <h3>展册管理</h3>
-            <p>自由创建多层级数字展册，支持名称、描述、封面设置与可见性开关，草稿/发布状态灵活切换。展册即作品集，一目了然。</p>
+            <h3>专属数字展册</h3>
+            <p>为客户、项目、产品系列创建独立展册，封面、描述、分类清清楚楚。发出去不是一堆文件，而是一份像样的线上方案。</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon feature-purple">🗂️</div>
-            <h3>分类组织</h3>
-            <p>每个展册下可按主题创建多个分类，支持独立可见性控制。图片、视频资源按分类归类，结构清晰便于查阅。</p>
+            <h3>客户视角分类</h3>
+            <p>按行业、项目阶段、产品型号或服务套餐整理内容，让客户不用翻聊天记录找素材，第一眼就知道你能提供什么。</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon feature-green">🖼️</div>
-            <h3>多媒体资源上传</h3>
-            <p>图片和视频一键上传，自动识别 MIME 类型分类存储。批量上传、拖拽排序，资源墙展示所见即所得。</p>
+            <h3>图片视频统一呈现</h3>
+            <p>作品图、案例视频、产品细节、交付资料统一管理，批量上传、拖拽排序。展示效果越专业，客户信任来得越快。</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon feature-orange">🔗</div>
-            <h3>一键分享链接</h3>
-            <p>生成独立的分享链接，支持整个展册或单个分类维度分享。可设过期时间，访客免登录即可浏览全部资源。</p>
+            <h3>一键生成客户链接</h3>
+            <p>给客户一个链接就能看完整内容，免登录、少打扰、方便转发。适合报价前展示、成交后交付、老客户复购触达。</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon feature-red">📊</div>
-            <h3>数据看板</h3>
-            <p>仪表盘实时统计展册数量、资源总数与存储空间使用情况，数据一目了然，帮你掌握全局动态。</p>
+            <h3>经营数据看板</h3>
+            <p>资源数量、空间占用、分享内容集中查看，团队知道哪些内容在沉淀，老板也能看到服务资产是不是越攒越值钱。</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon feature-cyan">👥</div>
-            <h3>团队协作与权限</h3>
-            <p>支持管理员与普通用户双角色体系，管理员可管理用户及角色分配，满足小团队协作场景。</p>
+            <h3>团队账号与权限</h3>
+            <p>管理员统一维护用户和权限，销售、设计、运营各管各的内容，服务标准统一，客户体验也不再看个人发挥。</p>
           </div>
         </div>
       </div>
@@ -67,41 +67,41 @@
 
     <section id="advantages" class="alt">
       <div class="container text-center">
-        <span class="section-label">为什么选 Zanso</span>
-        <h2 class="section-title">比传统展示方式更进一步</h2>
-        <p class="section-subtitle">专为数字内容展示场景打造，而非通用网盘或者静态网站。</p>
+        <span class="section-label">商业价值</span>
+        <h2 class="section-title">让内容资产真正帮你赚钱</h2>
+        <p class="section-subtitle">少一点反复解释，多一点专业呈现，把每一次分享都变成成交机会。</p>
       </div>
       <div class="container">
         <div class="why-grid">
           <div class="why-item">
             <span class="num">1</span>
-            <h4>即建即用，零门槛上手</h4>
-            <p>无需任何开发经验，注册即可创建首个展册。从上传资源到生成分享链接，全程可视化操作。</p>
+            <h4>提升成交前的信任感</h4>
+            <p>客户点开就是完整、整洁、有结构的内容展示，比微信群甩图、网盘丢文件专业太多，报价也更有底气。</p>
           </div>
           <div class="why-item">
             <span class="num">2</span>
-            <h4>面向展示的设计理念</h4>
-            <p>不同于通用云盘，Zanso 围绕“展示”这一核心场景设计。展册-分类-资源的树形结构专为作品集、产品目录等内容形态优化。</p>
+            <h4>减少销售和交付沟通成本</h4>
+            <p>资料统一入口，客户自己看、团队自己补，少来回翻文件、少重复介绍，时间省下来就能接更多单。</p>
           </div>
           <div class="why-item">
             <span class="num">3</span>
-            <h4>灵活的安全与可见性控制</h4>
-            <p>每个展册和分类都可独立控制可见性，分享链接支持过期时间。敏感内容随时关闭，公开内容一键分享。</p>
+            <h4>沉淀可复用的服务资产</h4>
+            <p>案例、素材、产品资料不是做完就散落各处，而是持续沉淀成可复用展册，新客户来了直接组合交付。</p>
           </div>
           <div class="why-item">
             <span class="num">4</span>
-            <h4>全栈自研，生产级基础设施</h4>
-            <p>后端 Go + Gin 高性能架构，MySQL + Redis 稳定数据层，前端 Vue 3 现代化交互体验，适配 MinIO 对象存储。</p>
+            <h4>适合做会员服务和客户交付</h4>
+            <p>你可以把展册作为付费服务的一部分，按客户、套餐或项目交付专属内容，让服务看得见、摸得着。</p>
           </div>
           <div class="why-item">
             <span class="num">5</span>
-            <h4>免费部署，私有化可控</h4>
-            <p>开源架构设计，数据完全掌握在自己手中。支持私有化部署，敏感资源不经过第三方，安全合规。</p>
+            <h4>权限可控，分享更放心</h4>
+            <p>展册和分类可控制可见性，分享链接可按需使用。公开展示、内部评审、客户交付都能分开管。</p>
           </div>
           <div class="why-item">
             <span class="num">6</span>
-            <h4>持续迭代，功能不断扩展</h4>
-            <p>覆盖完善的管理端与分享端，资源拖拽排序、分享统计、用户管理等实用功能持续更新中。</p>
+            <h4>稳定技术底座，能长期经营</h4>
+            <p>基于 Go、Vue、MySQL、Redis 和对象存储构建，适合持续扩展，不是临时页面糊一下就完事。</p>
           </div>
         </div>
       </div>
@@ -109,36 +109,36 @@
 
     <section id="usecases">
       <div class="container text-center">
-        <span class="section-label">适用场景</span>
-        <h2 class="section-title">谁在用 Zanso</h2>
-        <p class="section-subtitle">无论是个人创作者还是企业团队，总有一种用法适合你。</p>
+        <span class="section-label">适合谁用</span>
+        <h2 class="section-title">越依赖内容展示赚钱，越需要 Zanso</h2>
+        <p class="section-subtitle">服务商、工作室、销售团队、教育机构，都可以把内容展示变成标准化交付能力。</p>
       </div>
       <div class="container">
         <div class="usecase-grid">
           <div class="usecase-card">
             <span class="emoji">🎨</span>
-            <h4>设计作品集</h4>
-            <p>设计师按项目分类展示作品，分享链接发给客户选稿，免登录即可浏览。</p>
+            <h4>设计与创意服务</h4>
+            <p>把作品集、方案稿、交付案例整理成客户专属链接，提案更顺，报价更像回事。</p>
           </div>
           <div class="usecase-card">
             <span class="emoji">📸</span>
-            <h4>摄影展览</h4>
-            <p>摄影师按拍摄主题创建展册，高清大图展示，客户选片交付一步到位。</p>
+            <h4>摄影与影像交付</h4>
+            <p>按客户和拍摄主题交付图片视频，选片、复购、转介绍都更方便。</p>
           </div>
           <div class="usecase-card">
             <span class="emoji">🏷️</span>
-            <h4>产品目录</h4>
-            <p>电商运营按系列分类展示商品图与视频，内部评审或对外宣传均可快速生成分享页。</p>
+            <h4>产品目录与招商</h4>
+            <p>产品图、视频、卖点资料统一展示，发给代理、客户、渠道，少讲废话多看内容。</p>
           </div>
           <div class="usecase-card">
             <span class="emoji">📚</span>
-            <h4>教学素材库</h4>
-            <p>教育机构按课程/章节整理课件材料，学生通过分享链接查阅，免注册、零门槛。</p>
+            <h4>课程与资料服务</h4>
+            <p>把课程资料、案例库、会员素材按栏目交付，付费用户拿到的是完整服务，不是零散文件。</p>
           </div>
           <div class="usecase-card">
             <span class="emoji">🏗️</span>
-            <h4>项目交付</h4>
-            <p>项目交付物按模块分类归档，客户可通过分享链接随时查看交付进度与内容明细。</p>
+            <h4>项目型服务交付</h4>
+            <p>装修、工程、咨询、营销项目都能按阶段归档交付，让客户随时看到进展和成果。</p>
           </div>
         </div>
       </div>
@@ -146,9 +146,9 @@
 
     <section id="cta" class="cta">
       <div class="container">
-        <h2>立即开始创建你的数字展册</h2>
-        <p>无需注册邀请码，几分钟即可完成从搭建到分享的全流程。</p>
-        <a :href="appUrl" class="btn btn-cta btn-hero" @click.prevent="goApp">前往控制台</a>
+        <h2>现在就把内容变成可成交的服务资产</h2>
+        <p>先创建一个客户展册，把最能打的案例、产品和交付资料放进去，下一次沟通直接发链接。</p>
+        <a :href="appUrl" class="btn btn-cta btn-hero" @click.prevent="goApp">立即开通使用</a>
       </div>
     </section>
 

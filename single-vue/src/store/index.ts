@@ -5,8 +5,7 @@ export interface PlatformUser {
   id: string;
   name: string;
   loginName: string;
-  contactName?: string;
-  contactPhone?: string;
+  email?: string;
   status?: string;
   roleCodes?: string[];
   roleNames?: string[];

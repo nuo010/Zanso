@@ -20,12 +20,8 @@
           <strong>{{ store.user.loginName || '--' }}</strong>
         </div>
         <div class="profile-item">
-          <span>联系人</span>
-          <strong>{{ store.user.contactName || '--' }}</strong>
-        </div>
-        <div class="profile-item">
-          <span>联系电话</span>
-          <strong>{{ store.user.contactPhone || '--' }}</strong>
+          <span>邮箱</span>
+          <strong>{{ store.user.email || '--' }}</strong>
         </div>
         <div class="profile-item">
           <span>角色</span>

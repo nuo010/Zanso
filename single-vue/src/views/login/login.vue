@@ -31,16 +31,13 @@
           <el-input v-model="registerForm.name" placeholder="请输入用户名称" />
         </el-form-item>
         <el-form-item label="登录账号">
-          <el-input v-model="registerForm.loginName" placeholder="请输入登录账号" />
+          <el-input v-model="registerForm.loginName" placeholder="仅支持字母和数字，至少 6 位" />
         </el-form-item>
         <el-form-item label="密码">
           <el-input v-model="registerForm.password" type="password" show-password placeholder="请输入密码" />
         </el-form-item>
-        <el-form-item label="联系人">
-          <el-input v-model="registerForm.contactName" placeholder="可选" />
-        </el-form-item>
-        <el-form-item label="联系电话">
-          <el-input v-model="registerForm.contactPhone" placeholder="可选" />
+        <el-form-item label="邮箱">
+          <el-input v-model="registerForm.email" placeholder="可选" />
         </el-form-item>
         <el-button type="primary" class="submit-btn" :loading="submitting" @click="handleRegister">
           注册
@@ -77,9 +74,11 @@ const registerForm = reactive({
   name: '',
   loginName: '',
   password: '',
-  contactName: '',
-  contactPhone: '',
+  email: '',
 });
+
+const loginNamePattern = /^[A-Za-z0-9]{6,}$/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function toggleAuthMode() {
   authMode.value = authMode.value === 'login' ? 'register' : 'login';
@@ -110,20 +109,31 @@ async function handleLogin() {
 }
 
 async function handleRegister() {
-  if (!registerForm.name || !registerForm.loginName || !registerForm.password) {
+  const name = registerForm.name.trim();
+  const loginName = registerForm.loginName.trim();
+  const password = registerForm.password.trim();
+  const email = registerForm.email.trim();
+  if (!name || !loginName || !password) {
     toast('用户名称、登录账号和密码不能为空', 'warning');
+    return;
+  }
+  if (!loginNamePattern.test(loginName)) {
+    toast('登录账号只能使用字母和数字，且至少 6 位', 'warning');
+    return;
+  }
+  if (email && !emailPattern.test(email)) {
+    toast('请输入正确的邮箱格式', 'warning');
     return;
   }
   submitting.value = true;
   try {
     await createUser({
-      name: registerForm.name,
-      loginName: registerForm.loginName,
-      password: registerForm.password,
-      contactName: registerForm.contactName,
-      contactPhone: registerForm.contactPhone,
+      name,
+      loginName,
+      password,
+      email,
     });
-    form.loginName = registerForm.loginName;
+    form.loginName = loginName;
     form.password = '';
     authMode.value = 'login';
     toast('注册成功，请登录', 'success');

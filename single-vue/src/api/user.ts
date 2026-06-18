@@ -4,8 +4,7 @@ export function createUser(data: {
   name: string;
   loginName: string;
   password: string;
-  contactName?: string;
-  contactPhone?: string;
+  email?: string;
 }) {
   return AxiosUtil({
     url: '/api/platform/users',
