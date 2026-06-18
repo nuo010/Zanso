@@ -29,6 +29,13 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="账号状态" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'info'" effect="light">
+              {{ row.status === 'active' ? '启用' : '禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="资源数量" width="120" align="center">
           <template #default="{ row }">
             <span class="resource-count">{{ row.resourceCount || 0 }}</span>
@@ -53,7 +60,29 @@
             </el-select>
           </template>
         </el-table-column>
+        <el-table-column label="账号操作" width="140" align="center">
+          <template #default="{ row }">
+            <el-button
+              link
+              :type="row.status === 'active' ? 'danger' : 'success'"
+              :disabled="row.id === store.user.id"
+              @click="handleStatusChange(row)"
+            >
+              {{ row.status === 'active' ? '禁用' : '启用' }}
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
+
+      <div class="pagination-bar">
+        <el-pagination
+          v-model:current-page="page"
+          :page-size="pageSize"
+          :total="total"
+          layout="total, prev, pager, next"
+          @current-change="loadUsers"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -61,21 +90,29 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { ElMessageBox } from 'element-plus';
-import { getUserList, updateUserRole } from '@/api/user';
+import { getUserList, updateUserRole, updateUserStatus } from '@/api/user';
 import { userMainStore, type PlatformUser } from '@/store';
 import { toast } from '@/util/util';
 
 const store = userMainStore();
 const loading = ref(false);
 const users = ref<PlatformUser[]>([]);
+const page = ref(1);
+const pageSize = 20;
+const total = ref(0);
 
 onMounted(loadUsers);
 
 async function loadUsers() {
   loading.value = true;
   try {
-    const res = await getUserList();
-    users.value = res.data || [];
+    const res = await getUserList({
+      page: page.value,
+      pageSize,
+    });
+    users.value = res.data?.list || [];
+    total.value = res.data?.total || 0;
+    page.value = res.data?.page || page.value;
   } finally {
     loading.value = false;
   }
@@ -120,6 +157,26 @@ async function handleRoleChange(user: PlatformUser, roleCode: 'admin' | 'user') 
   }
   toast('用户角色已更新', 'success');
 }
+
+async function handleStatusChange(user: PlatformUser) {
+  const nextStatus = user.status === 'active' ? 'inactive' : 'active';
+  await ElMessageBox.confirm(
+    `确认${nextStatus === 'active' ? '启用' : '禁用'}「${user.name}」？`,
+    '修改账号状态',
+    {
+      type: nextStatus === 'active' ? 'success' : 'warning',
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+    }
+  );
+
+  const res = await updateUserStatus(user.id, { status: nextStatus });
+  const index = users.value.findIndex((item) => item.id === user.id);
+  if (index >= 0) {
+    users.value[index] = res.data;
+  }
+  toast(`账号已${nextStatus === 'active' ? '启用' : '禁用'}`, 'success');
+}
 </script>
 
 <style scoped lang="scss">
@@ -153,6 +210,12 @@ async function handleRoleChange(user: PlatformUser, roleCode: 'admin' | 'user') 
 
 .user-table {
   width: 100%;
+}
+
+.pagination-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 18px;
 }
 
 .contact-block strong,

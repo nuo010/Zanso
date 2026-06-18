@@ -38,16 +38,25 @@ export function getCurrentUser() {
   });
 }
 
-export function getUserList() {
+export function getUserList(params?: { page?: number; pageSize?: number }) {
   return AxiosUtil({
     url: '/api/platform/users',
     method: 'get',
+    params,
   });
 }
 
 export function updateUserRole(id: string, data: { roleCode: 'admin' | 'user' }) {
   return AxiosUtil({
     url: `/api/platform/users/${id}/role`,
+    method: 'post',
+    data,
+  });
+}
+
+export function updateUserStatus(id: string, data: { status: 'active' | 'inactive' }) {
+  return AxiosUtil({
+    url: `/api/platform/users/${id}/status`,
     method: 'post',
     data,
   });

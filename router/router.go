@@ -33,6 +33,7 @@ func NewRouter() *gin.Engine {
 		platformAuth.GET("/auth/profile", service.GetCurrentUserProfile)
 		platformAuth.GET("/users", service.GetUserList)
 		platformAuth.POST("/users/:id/role", service.UpdateUserRole)
+		platformAuth.POST("/users/:id/status", service.UpdateUserStatus)
 		platformAuth.POST("/collections", service.CreateCategory)
 		platformAuth.GET("/collections", service.GetCurrentUserCategoryList)
 		platformAuth.POST("/collections/:id/update", service.UpdateCategory)

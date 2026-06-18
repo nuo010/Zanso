@@ -93,8 +93,16 @@ func GetUserList(c *gin.Context) {
 		return
 	}
 
+	page, pageSize := parsePageParams(c)
+	var total int64
+	query := db.DB.Model(&model.User{})
+	if err := query.Count(&total).Error; err != nil {
+		result.ErrSetMsg(c, "查询用户失败")
+		return
+	}
+
 	var userList []model.User
-	if err := db.DB.Order("created_at desc").Find(&userList).Error; err != nil {
+	if err := query.Order("created_at desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&userList).Error; err != nil {
 		result.ErrSetMsg(c, "查询用户失败")
 		return
 	}
@@ -103,7 +111,12 @@ func GetUserList(c *gin.Context) {
 		result.ErrSetMsg(c, "查询用户角色失败")
 		return
 	}
-	result.OkSetData(c, userRoleList)
+	result.OkSetData(c, model.PageResult{
+		List:     userRoleList,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	})
 }
 
 func UpdateUserRole(c *gin.Context) {
@@ -167,6 +180,72 @@ func UpdateUserRole(c *gin.Context) {
 		return
 	}
 
+	userWithRoles, err := buildUserWithRoles(user)
+	if err != nil {
+		result.ErrSetMsg(c, "查询用户角色失败")
+		return
+	}
+	result.OkSetData(c, userWithRoles)
+}
+
+func UpdateUserStatus(c *gin.Context) {
+	currentUser, ok := util.GetCurrentUser(c)
+	if !ok {
+		result.ErrSetMsg(c, "登录状态无效")
+		return
+	}
+	if !isAdminUser(currentUser.ID) {
+		result.ErrSetMsg(c, "只有管理员可以修改用户状态")
+		return
+	}
+
+	userID := strings.TrimSpace(c.Param("id"))
+	if userID == "" {
+		result.ErrSetMsg(c, "用户 ID 不能为空")
+		return
+	}
+	if userID == currentUser.ID {
+		result.ErrSetMsg(c, "不能禁用或启用自己，别把自己锁门外了")
+		return
+	}
+
+	var req model.UpdateUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.ErrSetMsg(c, "状态参数错误")
+		return
+	}
+	status := strings.TrimSpace(req.Status)
+	if status != model.UserStatusActive && status != model.UserStatusInactive {
+		result.ErrSetMsg(c, "状态只能是 active 或 inactive")
+		return
+	}
+
+	var user model.User
+	if err := db.DB.Where("id = ?", userID).Take(&user).Error; err != nil {
+		result.ErrSetMsg(c, "用户不存在")
+		return
+	}
+	if user.Status == status {
+		userWithRoles, err := buildUserWithRoles(user)
+		if err != nil {
+			result.ErrSetMsg(c, "查询用户角色失败")
+			return
+		}
+		result.OkSetData(c, userWithRoles)
+		return
+	}
+
+	now := util.GetTime()
+	if err := db.DB.Model(&model.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"status":     status,
+		"updated_at": now,
+	}).Error; err != nil {
+		result.ErrSetMsg(c, "修改用户状态失败")
+		return
+	}
+
+	user.Status = status
+	user.UpdatedAt = now
 	userWithRoles, err := buildUserWithRoles(user)
 	if err != nil {
 		result.ErrSetMsg(c, "查询用户角色失败")

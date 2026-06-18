@@ -4,6 +4,7 @@ import "time"
 
 const (
 	UserStatusActive          = "active"
+	UserStatusInactive        = "inactive"
 	RoleCodeAdmin             = "admin"
 	RoleCodeUser              = "user"
 	CategoryStatusDraft       = "draft"
@@ -201,6 +202,10 @@ type UserLoginRequest struct {
 
 type UpdateUserRoleRequest struct {
 	RoleCode string `json:"roleCode"`
+}
+
+type UpdateUserStatusRequest struct {
+	Status string `json:"status"`
 }
 
 type CreateCategoryRequest struct {
